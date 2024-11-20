@@ -1,0 +1,3192 @@
+//*****************************************************************************
+// SIOC A320 RADIO MANAGEMENT PANELS
+// Aquitaine Simulation
+//*****************************************************************************
+// Fichier:                    a320jl_rmp.txt
+// Date de création:           17/12/2021
+
+// Règles de nommage des variables:
+//	Variables FS:           _fs
+//	Interrupteurs:          _sw
+//	Rotacteurs:             _rot
+//	Voyants à LED:          _ld
+//	Afficheurs 7 segments:  _dis
+//	Routines:               _sb
+
+// Classification des variables:
+// voir a320jl_init.txt
+
+// Journal des modifications:
+// aucun
+
+//***** RMP 1 & 2 *****//
+
+// NOTE 1: les fréquences StandBy de FS (offsets 311A, 311C, 311E, 3120) et le
+// Radio Swap (offset 3123) ne sont pas utilisés car WideClient effectue un
+// aller-retour entre la valeur écrite et l'ancienne valeur.
+
+// NOTE 2: pour pouvoir stocker dans une même variable les fréquences VHF 25 kHz
+// et 8.33 kHz, elles sont converties vers une valeur interne d'espacement
+// 6.25 * 100 et les conversions vers une fréquence en Hz sont faites à chaque
+// lecture/écriture de la valeur.
+
+// NOTE 3: les variables Prev???Freq sont utilisées pour éviter le bagotement de
+// WideClient entre l'ancienne valeur et la nouvelle valeur lors de l'écriture
+// d'une nouvelle fréquence active.
+
+Var 2000, name PrevCom1Freq // In FS format
+Var 2001, name Com1Freq_fs, Link FSUIPC_INOUT, Offset $034E, Length 2
+{
+	CALL &Com1Freq_sb
+}
+Var 2002, name Com1Freq_sb, Link SUBRUTINE
+{
+	L0 = FROMBCD &Com1Freq_fs
+	L1 = DIV &VHF1Freq 500
+	L1 = L1 * 5
+	L1 = L1 - 100000
+	L1 = DIV L1 10
+
+	C0 = L0 <> L1
+	C1 = &Com1Freq_fs <> &PrevCom1Freq
+	if C0 AND C1
+	{
+		&PrevCom1Freq = &Com1Freq_fs
+		
+		L0 = L0 * 10
+		L1 = MOD L0 25
+		if L1 = 20
+		{
+			L0 = L0 + 100005
+		}
+		else
+		{
+			L0 = L0 + 100000
+		}
+		L1 = MOD L0 25
+		L1 = L1 / 4
+		L0 = L0 + L1
+		&VHF1Freq = L0 * 100
+		
+		if &VHF1Stby = 0
+		{
+			&VHF1Stby = &VHF1Freq
+		}
+	}
+	else
+	{
+		if &PrevCom1Freq = &Com1Freq_fs
+		{
+			&PrevCom1Freq = 0
+		}
+		else
+		{
+			if &PrevCom1Freq = 0
+			{
+				&PrevCom1Freq = &Com1Freq_fs
+			}
+		}
+	}
+}
+Var 2003, name VHF1Freq // see NOTE 2
+{
+	if &RMP1Mode = 1  // VHF1
+	{
+		CALL &RMP1UpdActv_sb
+	}
+	if &RMP2Mode = 1  // VHF1
+	{
+		CALL &RMP2UpdActv_sb
+	}
+	
+	L0 = DIV &VHF1Freq 500
+	L0 = L0 * 5
+	L0 = L0 - 100000
+	L0 = DIV L0 10
+	&Com1Freq_fs = TOBCD L0
+}
+Var 2004, name VHF1Stby // see NOTE 2
+{
+	if &RMP1Mode = 1  // VHF1
+	{
+		CALL &RMP1UpdStby_sb
+	}
+	if &RMP2Mode = 1  // VHF1
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+
+Var 2005, name PrevCom2Freq // In FS format
+Var 2006, name Com2Freq_fs, Link FSUIPC_INOUT, Offset $3118, Length 2
+{
+	CALL &Com2Freq_sb
+}
+Var 2007, name Com2Freq_sb, Link SUBRUTINE
+{
+	L0 = FROMBCD &Com2Freq_fs
+	L1 = DIV &VHF2Freq 500
+	L1 = L1 * 5
+	L1 = L1 - 100000
+	L1 = DIV L1 10
+
+	C0 = L0 <> L1
+	C1 = &Com2Freq_fs <> &PrevCom2Freq
+	if C0 AND C1
+	{
+		&PrevCom2Freq = &Com2Freq_fs
+		
+		L0 = L0 * 10
+		L1 = MOD L0 25
+		if L1 = 20
+		{
+			L0 = L0 + 100005
+		}
+		else
+		{
+			L0 = L0 + 100000
+		}
+		L1 = MOD L0 25
+		L1 = L1 / 4
+		L0 = L0 + L1
+		&VHF2Freq = L0 * 100
+		
+		if &VHF2Stby = 0
+		{
+			&VHF2Stby = &VHF2Freq
+		}
+	}
+	else
+	{
+		if &PrevCom2Freq = &Com2Freq_fs
+		{
+			&PrevCom2Freq = 0
+		}
+		else
+		{
+			if &PrevCom2Freq = 0
+			{
+				&PrevCom2Freq = &Com2Freq_fs
+			}
+		}
+	}
+}
+Var 2008, name VHF2Freq // see NOTE 2
+{
+	if &RMP1Mode = 2  // VHF2
+	{
+		CALL &RMP1UpdActv_sb
+	}
+	if &RMP2Mode = 2  // VHF2
+	{
+		CALL &RMP2UpdActv_sb
+	}
+		
+	L0 = DIV &VHF2Freq 500
+	L0 = L0 * 5
+	L0 = L0 - 100000
+	L0 = DIV L0 10
+	&Com2Freq_fs = TOBCD L0
+}
+Var 2009, name VHF2Stby // see NOTE 2
+{
+	if &RMP1Mode = 2  // VHF2
+	{
+		CALL &RMP1UpdStby_sb
+	}
+	if &RMP2Mode = 2  // VHF2
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+
+Var 2010, name VHF3Freq, Value 13400000 // see NOTE 2
+{
+	if &RMP1Mode = 3  // VHF3
+	{
+		CALL &RMP1UpdActv_sb
+		CALL &RMP1UpdStby_sb
+	}
+	if &RMP2Mode = 3  // VHF3
+	{
+		CALL &RMP2UpdActv_sb
+		CALL &RMP2UpdStby_sb
+	}
+}
+Var 2011, name VHF3Mode // 0: Acars, 1: Voice
+{
+	if &RMP1Mode = 3  // VHF3
+	{	
+		CALL &RMP1UpdActv_sb
+		CALL &RMP1UpdStby_sb
+	}
+	if &RMP2Mode = 3  // VHF3
+	{
+		CALL &RMP2UpdActv_sb
+		CALL &RMP2UpdStby_sb
+	}
+}
+
+Var 2012, name HF1Freq, Value 2800 // In kHz
+{
+	if &RMP1Mode = 4  // HF1
+	{
+		CALL &RMP1UpdActv_sb
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		CALL &RMP2UpdActv_sb
+	}
+}
+Var 2013, name HF1Stby, Value 2800 // In kHz
+{
+	if &RMP1Mode = 4  // HF1
+	{
+		CALL &RMP1UpdStby_sb
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+Var 2014, name HF1AM // 0: SSB, 1: AM
+{
+	if &RMP1Mode = 4  // HF1
+	{
+		&RMP1AM_ld = &HF1AM
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		&RMP2AM_ld = &HF1AM
+	}
+}
+
+Var 2015, name HF2Freq, Value 2800 // In kHz
+{
+	if &RMP1Mode = 5  // HF2
+	{
+		CALL &RMP1UpdActv_sb
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		CALL &RMP2UpdActv_sb
+	}
+}
+Var 2016, name HF2Stby, Value 2800 // In kHz
+{
+	if &RMP1Mode = 5  // HF2
+	{
+		CALL &RMP1UpdStby_sb
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+Var 2017, name HF2AM // 0: SSB, 1: AM
+{
+	if &RMP1Mode = 5  // HF2
+	{
+		&RMP1AM_ld = &HF2AM
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		&RMP2AM_ld = &HF2AM
+	}
+}
+
+Var 2018, name RMPSEL_sb, Link SUBRUTINE
+{
+	&RMP1SEL_ld = 0
+	&RMP2SEL_ld = 0
+
+	if &RMP1Mode = 2  // VHF2
+	{
+		&RMP1SEL_ld = 1
+		if &RMP2Mode <> 0
+		{
+			&RMP2SEL_ld = 1
+		}
+	}
+	if &RMP1Mode = 3  // VHF3
+	{
+		&RMP1SEL_ld = 1
+	}
+	if &RMP1Mode = 4  // HF1
+	{
+		&RMP1SEL_ld = 1
+	}
+	if &RMP1Mode = 5  // HF2
+	{
+		&RMP1SEL_ld = 1
+	}
+
+	if &RMP2Mode = 1  // VHF1
+	{
+		if &RMP1Mode <> 0
+		{
+			&RMP1SEL_ld = 1
+		}
+		&RMP2SEL_ld = 1
+	}
+	if &RMP2Mode = 3  // VHF3
+	{
+		&RMP2SEL_ld = 1
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		&RMP2SEL_ld = 1
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		&RMP2SEL_ld = 1
+	}
+}
+
+
+//****** RMP 1 *****//
+
+Var 2019, name RMP1Mode // 0: Off, 1: VHF1, 2: VHF2, 3: VHF3, 4: HF1, 5: HF2, 6: VOR, 7: ILS, 8: MLS, 9: ADF
+{
+	CALL &RMPSEL_sb
+	CALL &RMP1UpdActv_sb
+	CALL &RMP1UpdStby_sb
+	&RMP1StbyPos = 0
+
+	C0 = &RMP1Mode = 4
+	C1 = &RMP1Mode = 5
+	C2 = C0 OR C1
+	C0 = &RMP1Mode = 0
+	C1 = C0 OR C2
+	C0 = &RMP1Mode = 8
+	if C0 OR C1
+	{
+		&RMP1dp2_ld = 0
+		&RMP1dp3_ld = 0
+	}
+	else
+	{
+		if &RMP1Mode = 9
+		{
+			&RMP1dp2_ld = 1
+			&RMP1dp3_ld = 0
+		}
+		else
+		{
+			&RMP1dp2_ld = 0
+			&RMP1dp3_ld = 1
+		}
+	}
+}
+
+Var 2020, name RMP1Pwr
+{
+	if &RMP1Pwr = 1
+	{
+		CALL &RMP1VHF1Sw_sb
+	}
+	else
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1NavStby = 0
+		&RMP1Mode = 0  // Off
+	}
+}
+Var 2021, name RMP1Pwr_sb, Link SUBRUTINE
+{
+	C0 = &RMP1Pwr_sw = 1
+	C1 = &EssPwr = 1
+	if C0 AND C1
+	{
+		&RMP1Pwr = 1
+	}
+	else
+	{
+		&RMP1Pwr = 0
+	}
+}
+Var 2022, name RMP1Pwr_sw, Link IOCARD_SW, Device 0, Input 86
+{
+	CALL &RMP1Pwr_sb
+}
+
+Var 2023, name RMP1SEL_ld, Link IOCARD_OUT, Device 0, Output 89
+
+Var 2024, name RMP1VHF1_ld, Link IOCARD_OUT, Device 0, Output 76
+Var 2025, name RMP1VHF1_sw, Link IOCARD_SW, Device 0, Input 76, Type P
+{
+	CALL &RMP1VHF1Sw_sb
+}
+Var 2026, name RMP1VHF1Sw_sb, Link SUBRUTINE
+{
+	if &RMP1Pwr = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1VHF1_ld = 1
+		&RMP1Mode = 1  // VHF1
+	}
+}
+
+Var 2027, name RMP1VHF2_ld, Link IOCARD_OUT, Device 0, Output 75
+Var 2028, name RMP1VHF2_sw, Link IOCARD_SW, Device 0, Input 88, Type P
+{
+	if &RMP1Pwr = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1VHF2_ld = 1
+		&RMP1Mode = 2  // VHF2
+	}
+}
+
+Var 2029, name RMP1VHF3_ld, Link IOCARD_OUT, Device 0, Output 78
+Var 2030, name RMP1VHF3_sw, Link IOCARD_SW, Device 0, Input 87, Type P
+{
+	if &RMP1Pwr = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1VHF3_ld = 1
+		&RMP1Mode = 3  // VHF3
+	}
+}
+
+Var 2031, name RMP1HF1_ld, Link IOCARD_OUT, Device 0, Output 77
+Var 2032, name RMP1HF1_sw, Link IOCARD_SW, Device 0, Input 80, Type P
+{
+	if &RMP1Pwr = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1HF1_ld = 1
+		&RMP1AM_ld = &HF1AM
+		&RMP1Mode = 4  // HF1
+	}
+}
+
+Var 2033, name RMP1HF2_ld, Link IOCARD_OUT, Device 0, Output 80
+Var 2034, name RMP1HF2_sw, Link IOCARD_SW, Device 0, Input 84, Type P
+{
+	if &RMP1Pwr = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1HF2_ld = 1
+		&RMP1AM_ld = &HF2AM
+		&RMP1Mode = 5  // HF2
+	}
+}
+
+Var 2035, name RMP1AM_ld, Link IOCARD_OUT, Device 0, Output 79
+Var 2036, name RMP1AM_sw, Link IOCARD_SW, Device 0, Input 83, Type P
+{
+	if &RMP1Pwr = 1
+	{
+		if &RMP1Mode = 4  // HF1
+		{
+			&HF1AM = 1 - &HF1AM
+		}
+		if &RMP1Mode = 5  // HF2
+		{
+			&HF2AM = 1 - &HF2AM
+		}
+	}
+}
+
+Var 2037, name RMP1NavStby // 0: Off, 1: On
+{
+	&RMP1NAV_ld = &RMP1NavStby
+	if &RMP1NavStby = 0
+	{
+		if &RMP1Mode >= 6
+		{
+			CALL &RMP1VHF1Sw_sb
+		}
+	}
+}
+Var 2038, name RMP1NAV_ld, Link IOCARD_OUT, Device 0, Output 85
+Var 2039, name RMP1NAV_sw, Link IOCARD_SW, Device 0, Input 72, Type P
+{
+	if &RMP1Pwr = 1
+	{
+		&RMP1NavStby = 1 - &RMP1NavStby
+	}
+}
+
+Var 2040, name PrevNav1Freq // In FS format
+Var 2041, name Nav1Freq_fs, Link FSUIPC_INOUT, Offset $0350, Length 2
+{
+	CALL &Nav1Freq_sb
+}
+Var 2042, name Nav1Freq_sb, Link SUBRUTINE
+{
+	L0 = FROMBCD &Nav1Freq_fs
+	L0 = L0 + 10000
+	
+	C0 = L0 <> &Nav1Freq
+	C1 = &Nav1Freq_fs <> &PrevNav1Freq
+	if C0 AND C1
+	{
+		&PrevNav1Freq = &Nav1Freq_fs
+		&Nav1Freq = L0
+		if &Nav1Stby = 0
+		{
+			&Nav1Stby = &Nav1Freq
+		}
+	}
+	else
+	{
+		if &PrevNav1Freq = &Nav1Freq_fs
+		{
+			&PrevNav1Freq = 0
+		}
+		else
+		{
+			if &PrevNav1Freq = 0
+			{
+				&PrevNav1Freq = &Nav1Freq_fs
+			}
+		}
+	}
+}
+Var 2043, name Nav1Freq // In MHz / 100 (i.e. 11375 for 113.75 MHz)
+{
+	C0 = &RMP1Mode = 6  // VOR
+	C1 = &RMP1Mode = 7  // ILS
+	if C0 OR C1
+	{
+		CALL &RMP1UpdActv_sb
+	}
+	
+	L0 = &Nav1Freq - 10000
+	&Nav1Freq_fs = TOBCD L0
+}
+Var 2044, name Nav1Stby // In MHz / 100 (i.e. 11375 for 113.75 MHz)
+{
+	C0 = &RMP1Mode = 6  // VOR
+	C1 = &RMP1Mode = 7  // ILS
+	if C0 OR C1
+	{
+		CALL &RMP1UpdStby_sb
+	}
+}
+Var 2045, name Nav1Obs_fs, Link FSUIPC_INOUT, Offset $0C4E, Length 2
+Var 2046, name Nav1Obs
+{
+	C0 = &RMP1Mode = 6  // VOR
+	C1 = &RMP1Mode = 7  // ILS
+	if C0 OR C1
+	{
+		CALL &RMP1UpdStby_sb
+	}
+	&Nav1Obs_fs = &Nav1Obs
+}
+Var 2047, name Nav1StbyMode // 0: Stby Freq, 1: Course
+{
+	if &RMP1NavStby = 1
+	{
+		L0 = &Nav1Freq
+		if &Nav1StbyMode = 1
+		{
+			&Nav1Freq = &Nav1Stby
+			&Nav1Obs = &Nav1Obs_fs
+		}
+		&Nav1Stby = L0
+	}
+	CALL &RMP1UpdStby_sb
+}
+
+Var 2048, name RMP1VOR_ld, Link IOCARD_OUT, Device 0, Output 86
+Var 2049, name RMP1VOR_sw, Link IOCARD_SW, Device 0, Input 73, Type P
+{
+	if &RMP1NavStby = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1VOR_ld = 1
+		&Nav1StbyMode = 0
+		&RMP1Mode = 6  // VOR
+	}
+}
+
+Var 2050, name RMP1ILS_ld, Link IOCARD_OUT, Device 0, Output 83
+Var 2051, name RMP1ILS_sw, Link IOCARD_SW, Device 0, Input 74, Type P
+{
+	if &RMP1NavStby = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1ILS_ld = 1
+		&Nav1StbyMode = 0
+		&RMP1Mode = 7  // ILS
+	}
+}
+
+Var 2052, name MLS1Freq, Value 500 // Channel number
+{
+	if &RMP1Mode = 8  // MLS
+	{
+		CALL &RMP1UpdActv_sb
+	}
+}
+Var 2053, name MLS1Stby, Value 500 // Channel number
+{
+	if &RMP1Mode = 8  // MLS
+	{
+		CALL &RMP1UpdStby_sb
+	}
+}
+Var 2054, name RMP1MLS_ld, Link IOCARD_OUT, Device 0, Output 84
+Var 2055, name RMP1MLS_sw, Link IOCARD_SW, Device 0, Input 75, Type P
+{
+	if &RMP1NavStby = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1MLS_ld = 1
+		&RMP1Mode = 8  // MLS
+	}
+}
+
+Var 2056, name Adf1FreqA_fs, Link FSUIPC_INOUT, Offset $034C, Length 2
+{
+	if &RMP1Mode = 9  // ADF
+	{
+		CALL &RMP1UpdActv_sb
+	}
+}
+Var 2057, name Adf1FreqB_fs, Link FSUIPC_INOUT, Offset $0356, Length 2
+{
+	if &RMP1Mode = 9  // ADF
+	{
+		CALL &RMP1UpdActv_sb
+	}
+}
+Var 2058, name Adf1Stby, Value 1900 // In kHz * 10 (i.e.: 3930 for 393.0 kHz)
+{
+	if &RMP1Mode = 9  // ADF
+	{
+		CALL &RMP1UpdStby_sb
+	}
+}
+
+Var 2059, name RMP1ADF_ld, Link IOCARD_OUT, Device 0, Output 81
+Var 2060, name RMP1ADF_sw, Link IOCARD_SW, Device 0, Input 79, Type P
+{
+	if &RMP1NavStby = 1
+	{
+		CALL &RMP1LedOff_sb
+		&RMP1ADF_ld = 1
+		&RMP1BFO_ld = &Adf1BFO
+		&RMP1Mode = 9  // ADF
+	}
+}
+
+Var 2061, name Adf1BFO // 0: Off, 1: On
+{
+	if &RMP1Mode = 9  // ADF
+	{
+		&RMP1BFO_ld = &Adf1BFO
+	}
+}
+Var 2062, name RMP1BFO_ld, Link IOCARD_OUT, Device 0, Output 82
+Var 2063, name RMP1BFO_sw, Link IOCARD_SW, Device 0, Input 78, Type P
+{
+	if &RMP1Mode = 9  // ADF
+	{
+		&Adf1BFO = 1 - &Adf1BFO
+	}
+}
+
+Var 2064, name RMP1LedOff_sb, Link SUBRUTINE // Shut off all leds, except SEL and NAV
+{
+	&RMP1VHF1_ld = 0
+	&RMP1VHF2_ld = 0
+	&RMP1VHF3_ld = 0
+	&RMP1HF1_ld = 0
+	&RMP1HF2_ld = 0
+	&RMP1AM_ld = 0
+	&RMP1VOR_ld = 0
+	&RMP1ILS_ld = 0
+	&RMP1MLS_ld = 0
+	&RMP1ADF_ld = 0
+	&RMP1BFO_ld = 0
+}
+
+Var 2065, name RMP1dp2_ld, Link IOCARD_OUT, Device 0, Output 87
+Var 2066, name RMP1dp3_ld, Link IOCARD_OUT, Device 0, Output 88
+
+Var 2067, name RMP1ActvD0_dis, Link IOCARD_DISPLAY, Device 0, Digit 70, Numbers 1
+Var 2068, name RMP1ActvD1_dis, Link IOCARD_DISPLAY, Device 0, Digit 71, Numbers 1
+Var 2069, name RMP1ActvD2_dis, Link IOCARD_DISPLAY, Device 0, Digit 72, Numbers 1
+Var 2070, name RMP1ActvD3_dis, Link IOCARD_DISPLAY, Device 0, Digit 73, Numbers 1
+Var 2071, name RMP1ActvD4_dis, Link IOCARD_DISPLAY, Device 0, Digit 74, Numbers 1
+Var 2072, name RMP1ActvD5_dis, Link IOCARD_DISPLAY, Device 0, Digit 75, Numbers 1
+
+Var 2073, name RMP1StbyD0_dis, Link IOCARD_DISPLAY, Device 0, Digit 64, Numbers 1
+Var 2074, name RMP1StbyD1_dis, Link IOCARD_DISPLAY, Device 0, Digit 65, Numbers 1
+Var 2075, name RMP1StbyD2_dis, Link IOCARD_DISPLAY, Device 0, Digit 66, Numbers 1
+Var 2076, name RMP1StbyD3_dis, Link IOCARD_DISPLAY, Device 0, Digit 67, Numbers 1
+Var 2077, name RMP1StbyD4_dis, Link IOCARD_DISPLAY, Device 0, Digit 68, Numbers 1
+Var 2078, name RMP1StbyD5_dis, Link IOCARD_DISPLAY, Device 0, Digit 69, Numbers 1
+
+Var 2079, name RMP1ActvVHF_sb, Link SUBRUTINE
+{
+	if &RMP1ActvVHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1ActvD5_dis = &RMP1ActvVHF_sb
+		&RMP1ActvD4_dis = &RMP1ActvVHF_sb
+		&RMP1ActvD3_dis = &RMP1ActvVHF_sb
+		&RMP1ActvD2_dis = &RMP1ActvVHF_sb
+		&RMP1ActvD1_dis = &RMP1ActvVHF_sb
+		&RMP1ActvD0_dis = &RMP1ActvVHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1ActvVHF_sb 100000
+		L0 = MOD L0 10
+		&RMP1ActvD5_dis = L0
+	
+		L0 = DIV &RMP1ActvVHF_sb 10000
+		L0 = MOD L0 10
+		&RMP1ActvD4_dis = L0
+	
+		L0 = DIV &RMP1ActvVHF_sb 1000
+		L0 = MOD L0 10
+		&RMP1ActvD3_dis = L0
+	
+		L0 = DIV &RMP1ActvVHF_sb 100
+		L0 = MOD L0 10
+		&RMP1ActvD2_dis = L0
+	
+		L0 = DIV &RMP1ActvVHF_sb 10
+		L0 = MOD L0 10
+		&RMP1ActvD1_dis = L0
+	
+		L0 = MOD &RMP1ActvVHF_sb 10
+		&RMP1ActvD0_dis = L0
+	}
+}
+Var 2080, name RMP1ActvHF_sb, Link SUBRUTINE
+{
+	&RMP1ActvD5_dis = &DISPLAY_OFF
+	
+	if &RMP1ActvHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1ActvD4_dis = &RMP1ActvHF_sb
+		&RMP1ActvD3_dis = &RMP1ActvHF_sb
+		&RMP1ActvD2_dis = &RMP1ActvHF_sb
+		&RMP1ActvD1_dis = &RMP1ActvHF_sb
+		&RMP1ActvD0_dis = &RMP1ActvHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1ActvHF_sb 10000
+		L0 = MOD L0 10
+		&RMP1ActvD4_dis = L0
+	
+		L0 = DIV &RMP1ActvHF_sb 1000
+		L0 = MOD L0 10
+		&RMP1ActvD3_dis = L0
+	
+		L0 = DIV &RMP1ActvHF_sb 100
+		L0 = MOD L0 10
+		&RMP1ActvD2_dis = L0
+	
+		L0 = DIV &RMP1ActvHF_sb 10
+		L0 = MOD L0 10
+		&RMP1ActvD1_dis = L0
+	
+		L0 = MOD &RMP1ActvHF_sb 10
+		&RMP1ActvD0_dis = L0
+	}
+}
+Var 2081, name RMP1ActvMF_sb, Link SUBRUTINE
+{
+	&RMP1ActvD0_dis = &DISPLAY_OFF
+	
+	if &RMP1ActvMF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1ActvD5_dis = &RMP1ActvMF_sb
+		&RMP1ActvD4_dis = &RMP1ActvMF_sb
+		&RMP1ActvD3_dis = &RMP1ActvMF_sb
+		&RMP1ActvD2_dis = &RMP1ActvMF_sb
+		&RMP1ActvD1_dis = &RMP1ActvMF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1ActvMF_sb 10000
+		L0 = MOD L0 10
+		&RMP1ActvD5_dis = L0
+	
+		L0 = DIV &RMP1ActvMF_sb 1000
+		L0 = MOD L0 10
+		&RMP1ActvD4_dis = L0
+	
+		L0 = DIV &RMP1ActvMF_sb 100
+		L0 = MOD L0 10
+		&RMP1ActvD3_dis = L0
+	
+		L0 = DIV &RMP1ActvMF_sb 10
+		L0 = MOD L0 10
+		&RMP1ActvD2_dis = L0
+	
+		L0 = MOD &RMP1ActvMF_sb 10
+		&RMP1ActvD1_dis = L0
+	}
+}
+Var 2082, name RMP1ActvMLS_sb, Link SUBRUTINE
+{
+	&RMP1ActvD5_dis = &DISPLAY_OFF
+	&RMP1ActvD3_dis = &DISPLAY_OFF
+	&RMP1ActvD4_dis = &DISPLAY_OFF
+	
+	if &RMP1ActvMLS_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1ActvD2_dis = &RMP1ActvMLS_sb
+		&RMP1ActvD1_dis = &RMP1ActvMLS_sb
+		&RMP1ActvD0_dis = &RMP1ActvMLS_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1ActvMLS_sb 100
+		L0 = MOD L0 10
+		&RMP1ActvD2_dis = L0
+	
+		L0 = DIV &RMP1ActvMLS_sb 10
+		L0 = MOD L0 10
+		&RMP1ActvD1_dis = L0
+	
+		L0 = MOD &RMP1ActvMLS_sb 10
+		&RMP1ActvD0_dis = L0
+	}
+}
+
+Var 2083, name RMP1StbyVHF_sb, Link SUBRUTINE
+{
+	if &RMP1StbyVHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1StbyD5_dis = &RMP1StbyVHF_sb
+		&RMP1StbyD4_dis = &RMP1StbyVHF_sb
+		&RMP1StbyD3_dis = &RMP1StbyVHF_sb
+		&RMP1StbyD2_dis = &RMP1StbyVHF_sb
+		&RMP1StbyD1_dis = &RMP1StbyVHF_sb
+		&RMP1StbyD0_dis = &RMP1StbyVHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1StbyVHF_sb 100000
+		L0 = MOD L0 10
+		&RMP1StbyD5_dis = L0
+	
+		L0 = DIV &RMP1StbyVHF_sb 10000
+		L0 = MOD L0 10
+		&RMP1StbyD4_dis = L0
+	
+		L0 = DIV &RMP1StbyVHF_sb 1000
+		L0 = MOD L0 10
+		&RMP1StbyD3_dis = L0
+	
+		L0 = DIV &RMP1StbyVHF_sb 100
+		L0 = MOD L0 10
+		&RMP1StbyD2_dis = L0
+	
+		L0 = DIV &RMP1StbyVHF_sb 10
+		L0 = MOD L0 10
+		&RMP1StbyD1_dis = L0
+	
+		L0 = MOD &RMP1StbyVHF_sb 10
+		&RMP1StbyD0_dis = L0
+	}
+}
+Var 2084, name RMP1StbyHF_sb, Link SUBRUTINE
+{
+	&RMP1StbyD5_dis = &DISPLAY_OFF
+	
+	if &RMP1StbyHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1StbyD4_dis = &RMP1StbyHF_sb
+		&RMP1StbyD3_dis = &RMP1StbyHF_sb
+		&RMP1StbyD2_dis = &RMP1StbyHF_sb
+		&RMP1StbyD1_dis = &RMP1StbyHF_sb
+		&RMP1StbyD0_dis = &RMP1StbyHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1StbyHF_sb 10000
+		L0 = MOD L0 10
+		&RMP1StbyD4_dis = L0
+	
+		L0 = DIV &RMP1StbyHF_sb 1000
+		L0 = MOD L0 10
+		&RMP1StbyD3_dis = L0
+	
+		L0 = DIV &RMP1StbyHF_sb 100
+		L0 = MOD L0 10
+		&RMP1StbyD2_dis = L0
+	
+		L0 = DIV &RMP1StbyHF_sb 10
+		L0 = MOD L0 10
+		&RMP1StbyD1_dis = L0
+	
+		L0 = MOD &RMP1StbyHF_sb 10
+		&RMP1StbyD0_dis = L0
+	}
+}
+Var 2085, name RMP1StbyMF_sb, Link SUBRUTINE
+{
+	&RMP1StbyD0_dis = &DISPLAY_OFF
+	
+	if &RMP1StbyMF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1StbyD5_dis = &RMP1StbyMF_sb
+		&RMP1StbyD4_dis = &RMP1StbyMF_sb
+		&RMP1StbyD3_dis = &RMP1StbyMF_sb
+		&RMP1StbyD2_dis = &RMP1StbyMF_sb
+		&RMP1StbyD1_dis = &RMP1StbyMF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1StbyMF_sb 10000
+		L0 = MOD L0 10
+		&RMP1StbyD5_dis = L0
+	
+		L0 = DIV &RMP1StbyMF_sb 1000
+		L0 = MOD L0 10
+		&RMP1StbyD4_dis = L0
+	
+		L0 = DIV &RMP1StbyMF_sb 100
+		L0 = MOD L0 10
+		&RMP1StbyD3_dis = L0
+	
+		L0 = DIV &RMP1StbyMF_sb 10
+		L0 = MOD L0 10
+		&RMP1StbyD2_dis = L0
+	
+		L0 = MOD &RMP1StbyMF_sb 10
+		&RMP1StbyD1_dis = L0
+	}
+}
+Var 2086, name RMP1StbyMLS_sb, Link SUBRUTINE
+{
+	&RMP1StbyD5_dis = &DISPLAY_OFF
+	&RMP1StbyD3_dis = &DISPLAY_OFF
+	&RMP1StbyD4_dis = &DISPLAY_OFF
+	
+	if &RMP1StbyMLS_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1StbyD2_dis = &RMP1StbyMLS_sb
+		&RMP1StbyD1_dis = &RMP1StbyMLS_sb
+		&RMP1StbyD0_dis = &RMP1StbyMLS_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1StbyMLS_sb 100
+		L0 = MOD L0 10
+		&RMP1StbyD2_dis = L0
+	
+		L0 = DIV &RMP1StbyMLS_sb 10
+		L0 = MOD L0 10
+		&RMP1StbyD1_dis = L0
+	
+		L0 = MOD &RMP1StbyMLS_sb 10
+		&RMP1StbyD0_dis = L0
+	}
+}
+Var 2087, name RMP1StbyCrs_sb, Link SUBRUTINE
+{
+	&RMP1StbyD5_dis = &DISPLAY_OFF
+	&RMP1StbyD4_dis = 0
+	&RMP1StbyD3_dis = &DISPLAY_DASH
+	
+	if &RMP1StbyCrs_sb <= &DISPLAY_SETBRT
+	{
+		&RMP1StbyD2_dis = &RMP1StbyCrs_sb
+		&RMP1StbyD1_dis = &RMP1StbyCrs_sb
+		&RMP1StbyD0_dis = &RMP1StbyCrs_sb
+	}
+	else
+	{
+		L0 = DIV &RMP1StbyCrs_sb 100
+		L0 = MOD L0 10
+		&RMP1StbyD2_dis = L0
+	
+		L0 = DIV &RMP1StbyCrs_sb 10
+		L0 = MOD L0 10
+		&RMP1StbyD1_dis = L0
+	
+		L0 = MOD &RMP1StbyCrs_sb 10
+		&RMP1StbyD0_dis = L0
+	}
+}
+
+Var 2088, name RMP1UpdActv_sb, Link SUBRUTINE
+{
+	if &RMP1Mode = 0  // Off
+	{
+		CALL &RMP1ActvVHF_sb &DISPLAY_OFF
+	}
+	if &RMP1Mode = 1  // VHF1
+	{
+		L0 = DIV &VHF1Freq 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP1ActvVHF_sb L0
+	}
+	if &RMP1Mode = 2  // VHF2
+	{
+		L0 = DIV &VHF2Freq 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP1ActvVHF_sb L0
+	}
+	if &RMP1Mode = 3  // VHF3
+	{
+		if &VHF3Mode = 0  // Acars
+		{
+			CALL &RMP1ActvVHF_sb &DISPLAY_DASH
+		}
+		else
+		{
+			L0 = DIV &VHF3Freq 500
+			L0 = L0 * 5
+			L0 = LIMIT 0 999999 0
+			CALL &RMP1ActvVHF_sb L0
+		}
+	}
+	if &RMP1Mode = 4  // HF1
+	{
+		L0 = &HF1Freq
+		L0 = LIMIT 0 99999 0
+		CALL &RMP1ActvHF_sb L0
+	}
+	if &RMP1Mode = 5  // HF2
+	{
+		L0 = &HF2Freq
+		L0 = LIMIT 0 99999 0
+		CALL &RMP1ActvHF_sb L0
+	}
+	C0 = &RMP1Mode = 6  // VOR
+	C1 = &RMP1Mode = 7  // ILS
+	if C0 OR C1
+	{
+		L0 = &Nav1Freq
+		L0 = LIMIT 0 99999 0
+		CALL &RMP1ActvMF_sb L0
+	}
+	if &RMP1Mode = 8  // MLS
+	{
+		L0 = &MLS1Freq
+		L0 = LIMIT 0 999 0
+		CALL &RMP1ActvMLS_sb L0
+	}
+	if &RMP1Mode = 9  // ADF
+	{
+		L0 = FROMBCD &Adf1FreqA_fs
+		L1 = FROMBCD &Adf1FreqB_fs
+		L2 = DIV L1 100
+		L2 = L2 * 1000
+		L0 = L0 + L2
+		L0 = L0 * 10
+		L2 = MOD L1 10
+		L0 = L0 + L2
+		L0 = LIMIT 0 99999 0
+		CALL &RMP1ActvMF_sb L0
+	}
+}
+
+Var 2089, name RMP1UpdStby_sb, Link SUBRUTINE
+{
+	if &RMP1Mode = 0  // Off
+	{
+		CALL &RMP1StbyVHF_sb &DISPLAY_OFF
+	}
+	if &RMP1Mode = 1  // VHF1
+	{
+		L0 = DIV &VHF1Stby 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP1StbyVHF_sb L0
+	}
+	if &RMP1Mode = 2  // VHF2
+	{
+		L0 = DIV &VHF2Stby 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP1StbyVHF_sb L0
+	}
+	if &RMP1Mode = 3  // VHF3
+	{
+		if &VHF3Mode = 0  // Acars active
+		{
+			L0 = DIV &VHF3Freq 500
+			L0 = L0 * 5
+			L0 = LIMIT 0 999999 0
+			CALL &RMP1StbyVHF_sb L0
+		}
+		else
+		{
+			CALL &RMP1StbyVHF_sb &DISPLAY_DASH
+		}
+	}
+	if &RMP1Mode = 4  // HF1
+	{
+		L0 = &HF1Stby
+		L0 = LIMIT 0 99999 0
+		CALL &RMP1StbyHF_sb L0
+	}
+	if &RMP1Mode = 5  // HF2
+	{
+		L0 = &HF2Stby
+		L0 = LIMIT 0 99999 0
+		CALL &RMP1StbyHF_sb L0
+	}
+	C0 = &RMP1Mode = 6  // VOR
+	C1 = &RMP1Mode = 7  // ILS
+	if C0 OR C1
+	{
+		if &Nav1StbyMode = 0
+		{
+			L0 = &Nav1Stby
+			L0 = LIMIT 0 99999 0
+			CALL &RMP1StbyMF_sb L0
+		}
+		else
+		{
+			L0 = &Nav1Obs
+			L0 = LIMIT 0 999 0
+			CALL &RMP1StbyCrs_sb L0
+		}
+	}
+	if &RMP1Mode = 8  // MLS
+	{
+		L0 = &MLS1Stby
+		L0 = LIMIT 0 999 0
+		CALL &RMP1StbyMLS_sb L0
+	}
+	if &RMP1Mode = 9  // ADF
+	{
+		L0 = &Adf1Stby
+		L0 = LIMIT 0 99999 0
+		CALL &RMP1StbyMF_sb L0
+	}
+}
+
+Var 2090, name RMP1Trsf_sw, Link IOCARD_SW, Device 0, Input 82, Type P
+{
+	if &RMP1Mode = 1  // VHF1
+	{
+		L0 = &VHF1Freq
+		&VHF1Freq = &VHF1Stby
+		&VHF1Stby = L0
+	}
+	if &RMP1Mode = 2  // VHF2
+	{
+		L0 = &VHF2Freq
+		&VHF2Freq = &VHF2Stby
+		&VHF2Stby = L0
+	}
+	if &RMP1Mode = 3  // VHF3
+	{
+		&VHF3Mode = 1 - &VHF3Mode
+	}
+	if &RMP1Mode = 4  // HF1
+	{
+		L0 = &HF1Freq
+		&HF1Freq = &HF1Stby
+		&HF1Stby = L0
+	}
+	if &RMP1Mode = 5  // HF2
+	{
+		L0 = &HF2Freq
+		&HF2Freq = &HF2Stby
+		&HF2Stby = L0
+	}
+	C0 = &RMP1Mode = 6  // VOR
+	C1 = &RMP1Mode = 7  // ILS
+	if C0 OR C1
+	{
+		&Nav1StbyMode = 1 - &Nav1StbyMode
+	}
+	if &RMP1Mode = 8  // MLS
+	{
+		L0 = &MLS1Freq
+		&MLS1Freq = &MLS1Stby
+		&MLS1Stby = L0
+	}
+	if &RMP1Mode = 9  // ADF
+	{
+		L0 = FROMBCD &Adf1FreqA_fs
+		L1 = FROMBCD &Adf1FreqB_fs
+		L2 = DIV L1 100
+		L2 = L2 * 1000
+		L0 = L0 + L2
+		L0 = L0 * 10
+		L2 = MOD L1 10
+		L0 = L0 + L2
+
+		L1 = DIV &Adf1Stby 10
+		L1 = MOD L1 1000
+		&Adf1FreqA_fs = TOBCD L1
+		L1 = DIV &Adf1Stby 10000
+		L1 = L1 * 100
+		L2 = MOD &Adf1Stby 10
+		L1 = L1 + L2
+		&Adf1FreqB_fs = TOBCD L1
+
+		&Adf1Stby = L0
+	}
+}
+
+Var 2091, name RMP1StbyPos // Position of cursor in StandBy display
+Var 2092, name RMP1KnobPsh_sw, Link IOCARD_SW, Device 0, Input 85
+{
+	if &RMP1KnobPsh_sw = 1
+	{
+		C0 = &RMP1Mode >= 1
+		C1 = &RMP1Mode <= 3
+		if C0 AND C1  // VHF1, VHF2, VHF3
+		{
+			C0 = &RMP1Mode < 3  // VHF1, VHF2
+			C1 = &VHF3Mode = 0
+			if C0 OR C1
+			{
+				&RMP1StbyPos = 1 - &RMP1StbyPos
+				if &RMP1StbyPos = 0
+				{
+					&RMP1StbyD3_dis = &DISPLAY_OFF
+					&RMP1StbyD4_dis = &DISPLAY_OFF
+					&RMP1StbyD5_dis = &DISPLAY_OFF
+				}
+				else
+				{
+					&RMP1StbyD0_dis = &DISPLAY_OFF
+					&RMP1StbyD1_dis = &DISPLAY_OFF
+					&RMP1StbyD2_dis = &DISPLAY_OFF
+				}
+			}
+		}
+		C0 = &RMP1Mode = 4  // HF1
+		C1 = &RMP1Mode = 5  // HF2
+		if C0 OR C1
+		{
+			&RMP1StbyPos = ROTATE 0 3 1
+			if &RMP1StbyPos = 0
+			{
+				&RMP1StbyD3_dis = &DISPLAY_OFF
+				&RMP1StbyD4_dis = &DISPLAY_OFF
+			}
+			if &RMP1StbyPos = 1
+			{
+				&RMP1StbyD2_dis = &DISPLAY_OFF
+			}
+			if &RMP1StbyPos = 2
+			{
+				&RMP1StbyD1_dis = &DISPLAY_OFF
+			}
+			if &RMP1StbyPos = 3
+			{
+				&RMP1StbyD0_dis = &DISPLAY_OFF
+			}
+		}
+		C0 = &RMP1Mode = 6  // VOR
+		C1 = &RMP1Mode = 7  // ILS
+		if C0 OR C1
+		{
+			if &Nav1StbyMode = 0
+			{
+				&RMP1StbyPos = 1 - &RMP1StbyPos
+				if &RMP1StbyPos = 0
+				{
+					&RMP1StbyD3_dis = &DISPLAY_OFF
+					&RMP1StbyD4_dis = &DISPLAY_OFF
+					&RMP1StbyD5_dis = &DISPLAY_OFF
+				}
+				else
+				{
+					&RMP1StbyD1_dis = &DISPLAY_OFF
+					&RMP1StbyD2_dis = &DISPLAY_OFF
+				}
+			}
+		}
+		if &RMP1Mode = 9  // ADF
+		{
+			&RMP1StbyPos = ROTATE 0 3 1
+			if &RMP1StbyPos = 0
+			{
+				&RMP1StbyD4_dis = &DISPLAY_OFF
+				&RMP1StbyD5_dis = &DISPLAY_OFF
+			}
+			if &RMP1StbyPos = 1
+			{
+				&RMP1StbyD3_dis = &DISPLAY_OFF
+			}
+			if &RMP1StbyPos = 2
+			{
+				&RMP1StbyD2_dis = &DISPLAY_OFF
+			}
+			if &RMP1StbyPos = 3
+			{
+				&RMP1StbyD1_dis = &DISPLAY_OFF
+			}
+		}
+	}
+	else
+	{
+		CALL &RMP1UpdStby_sb
+	}
+}
+
+Var 2093, name RMP1KnobTimer // Used to accelerate increment/decrement
+{
+	if &RMP1KnobTimer < 0  // Because behavior of TIMER is very oddly
+	{
+		&RMP1KnobTimer = 0
+	}
+}
+Var 2094, name RMP1KnobA_sw, Link IOCARD_SW, Device 0, Input 89
+{
+	if &RMP1Pwr = 1
+	{
+		if &RMP1KnobA_sw = 0
+		{
+			if &RMP1KnobB_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		else
+		{
+			if &RMP1KnobB_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		
+		if &RMP1KnobTimer > 0
+		{
+			L0 = L0 * 4
+		}
+		CALL &RMP1Knob_sb L0
+		&RMP1KnobTimer = &RMP1KnobTimer + 1
+		&RMP1KnobTimer = TIMER &RMP1KnobTimer, -1, 5
+	}
+}
+Var 2095, name RMP1KnobB_sw, Link IOCARD_SW, Device 0, Input 81
+{
+	if &RMP1Pwr = 1
+	{
+		if &RMP1KnobB_sw = 0
+		{
+			if &RMP1KnobA_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		else
+		{
+			if &RMP1KnobA_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		
+		if &RMP1KnobTimer > 0
+		{
+			L0 = L0 * 4
+		}
+		CALL &RMP1Knob_sb L0
+		&RMP1KnobTimer = &RMP1KnobTimer + 1
+		&RMP1KnobTimer = TIMER &RMP1KnobTimer, -1, 5
+	}
+}
+Var 2096, name RMP1Knob_sb, Link SUBRUTINE
+{
+	if &RMP1Mode = 1  // VHF1
+	{
+		if &RMP1StbyPos = 0
+		{
+			L0 = DIV &VHF1Stby 100000
+			L0 = ROTATE 118 136 &RMP1Knob_sb
+			
+			L0 = L0 * 100000
+			L1 = MOD &VHF1Stby 100000
+			&VHF1Stby = L0 + L1
+		}
+		else
+		{
+			L0 = MOD &VHF1Stby 100000
+			L0 = DIV L0 625
+			L0 = ROTATE 0 159 &RMP1Knob_sb
+			L0 = L0 * 625
+			
+			L1 = DIV &VHF1Stby 100000
+			L1 = L1 * 100000
+			&VHF1Stby = L0 + L1
+		}
+	}
+	if &RMP1Mode = 2  // VHF2
+	{
+		if &RMP1StbyPos = 0
+		{
+			L0 = DIV &VHF2Stby 100000
+			L0 = ROTATE 118 136 &RMP1Knob_sb
+			
+			L0 = L0 * 100000
+			L1 = MOD &VHF2Stby 100000
+			&VHF2Stby = L0 + L1
+		}
+		else
+		{
+			L0 = MOD &VHF2Stby 100000
+			L0 = DIV L0 625
+			L0 = ROTATE 0 159 &RMP1Knob_sb
+			L0 = L0 * 625
+			
+			L1 = DIV &VHF2Stby 100000
+			L1 = L1 * 100000
+			&VHF2Stby = L0 + L1
+		}
+	}
+	if &RMP1Mode = 3  // VHF3
+	{
+		if &VHF3Mode = 0
+		{
+			if &RMP1StbyPos = 0
+			{
+				L0 = DIV &VHF3Freq 100000
+				L0 = ROTATE 118 136 &RMP1Knob_sb
+				
+				L0 = L0 * 100000
+				L1 = MOD &VHF3Freq 100000
+				&VHF3Freq = L0 + L1
+			}
+			else
+			{
+				L0 = MOD &VHF3Freq 100000
+				L0 = DIV L0 625
+				L0 = ROTATE 0 159 &RMP1Knob_sb
+				L0 = L0 * 625
+				
+				L1 = DIV &VHF3Freq 100000
+				L1 = L1 * 100000
+				&VHF3Freq = L0 + L1
+			}
+		}
+	}
+	if &RMP1Mode = 4  // HF1
+	{
+		C0 = &HF1Stby = 2800
+		C1 = &RMP1Knob_sb < 0
+		if C0 AND C1
+		{
+			L0 = 24000
+		}
+		else
+		{
+			C0 = &HF1Stby = 24000
+			C1 = &RMP1Knob_sb > 0
+			if C0 AND C1
+			{
+				L0 = 2800
+			}
+			else
+			{
+				if &RMP1StbyPos = 0
+				{
+					L0 = DIV &HF1Stby 1000
+					L0 = ROTATE 2 24 &RMP1Knob_sb
+			
+					L0 = L0 * 1000
+					L1 = MOD &HF1Stby 1000
+					L0 = L0 + L1
+				}
+				if &RMP1StbyPos = 1
+				{
+					L0 = DIV &HF1Stby 100
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L0 = L0 * 100
+					L1 = MOD &HF1Stby 100
+					L0 = L0 + L1
+					L1 = DIV &HF1Stby 1000
+					L1 = L1 * 1000
+					L0 = L0 + L1
+					
+					if &HF1Stby = 24000
+					{
+						L0 = L0 - 1000
+					}
+				}
+				if &RMP1StbyPos = 2
+				{
+					L0 = DIV &HF1Stby 10
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L0 = L0 * 10
+					L1 = MOD &HF1Stby 10
+					L0 = L0 + L1
+					L1 = DIV &HF1Stby 100
+					L1 = L1 * 100
+					L0 = L0 + L1
+					
+					if &HF1Stby = 24000
+					{
+						L0 = L0 - 100
+					}
+				}
+				if &RMP1StbyPos = 3
+				{
+					L0 = MOD &HF1Stby 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L1 = DIV &HF1Stby 10
+					L1 = L1 * 10
+					L0 = L0 + L1
+					
+					if &HF1Stby = 24000
+					{
+						L0 = L0 - 10
+					}
+				}
+				L0 = LIMIT 2800 24000 0
+			}
+		}
+		&HF1Stby = L0
+	}
+	if &RMP1Mode = 5  // HF2
+	{
+		C0 = &HF2Stby = 2800
+		C1 = &RMP1Knob_sb < 0
+		if C0 AND C1
+		{
+			L0 = 24000
+		}
+		else
+		{
+			C0 = &HF2Stby = 24000
+			C1 = &RMP1Knob_sb > 0
+			if C0 AND C1
+			{
+				L0 = 2800
+			}
+			else
+			{
+				if &RMP1StbyPos = 0
+				{
+					L0 = DIV &HF2Stby 1000
+					L0 = ROTATE 2 24 &RMP1Knob_sb
+			
+					L0 = L0 * 1000
+					L1 = MOD &HF2Stby 1000
+					L0 = L0 + L1
+				}
+				if &RMP1StbyPos = 1
+				{
+					L0 = DIV &HF2Stby 100
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L0 = L0 * 100
+					L1 = MOD &HF2Stby 100
+					L0 = L0 + L1
+					L1 = DIV &HF2Stby 1000
+					L1 = L1 * 1000
+					L0 = L0 + L1
+					
+					if &HF2Stby = 24000
+					{
+						L0 = L0 - 1000
+					}
+				}
+				if &RMP1StbyPos = 2
+				{
+					L0 = DIV &HF2Stby 10
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L0 = L0 * 10
+					L1 = MOD &HF2Stby 10
+					L0 = L0 + L1
+					L1 = DIV &HF2Stby 100
+					L1 = L1 * 100
+					L0 = L0 + L1
+					
+					if &HF2Stby = 24000
+					{
+						L0 = L0 - 100
+					}
+				}
+				if &RMP1StbyPos = 3
+				{
+					L0 = MOD &HF2Stby 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L1 = DIV &HF2Stby 10
+					L1 = L1 * 10
+					L0 = L0 + L1
+					
+					if &HF2Stby = 24000
+					{
+						L0 = L0 - 10
+					}
+				}
+				L0 = LIMIT 2800 24000 0
+			}
+		}
+		&HF2Stby = L0
+	}
+	C0 = &RMP1Mode = 6  // VOR
+	C1 = &RMP1Mode = 7  // ILS
+	if C0 OR C1
+	{
+		if &Nav1StbyMode = 0
+		{
+			if &RMP1StbyPos = 0
+			{
+				L0 = DIV &Nav1Stby 100
+				L0 = ROTATE 108 117 &RMP1Knob_sb
+			
+				L0 = L0 * 100
+				L1 = MOD &Nav1Stby 100
+				&Nav1Stby = L0 + L1
+			}
+			else
+			{
+				L0 = MOD &Nav1Stby 100
+				L0 = DIV L0 5
+				L0 = ROTATE 0 19 &RMP1Knob_sb
+				L0 = L0 * 5
+			
+				L1 = DIV &Nav1Stby 100
+				L1 = L1 * 100
+				&Nav1Stby = L0 + L1
+			}
+		}
+		else
+		{
+			&Nav1Obs = ROTATE 0 359 &RMP1Knob_sb
+		}
+	}
+	if &RMP1Mode = 8  // MLS
+	{
+		&MLS1Stby = ROTATE 500 699 &RMP1Knob_sb
+	}
+	if &RMP1Mode = 9  // ADF
+	{
+		C0 = &Adf1Stby = 1900
+		C1 = &RMP1Knob_sb < 0
+		if C0 AND C1
+		{
+			L0 = 17500
+		}
+		else
+		{
+			C0 = &Adf1Stby = 17500
+			C1 = &RMP1Knob_sb > 0
+			if C0 AND C1
+			{
+				L0 = 1900
+			}
+			else
+			{
+				if &RMP1StbyPos = 0
+				{
+					L0 = DIV &Adf1Stby 1000
+					L0 = ROTATE 1 17 &RMP1Knob_sb
+			
+					L0 = L0 * 1000
+					L1 = MOD &Adf1Stby 1000
+					L0 = L0 + L1
+				}
+				if &RMP1StbyPos = 1
+				{
+					L0 = DIV &Adf1Stby 100
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L0 = L0 * 100
+					L1 = MOD &Adf1Stby 100
+					L0 = L0 + L1
+					L1 = DIV &Adf1Stby 1000
+					L1 = L1 * 1000
+					L0 = L0 + L1
+					
+					if &Adf1Stby = 1900
+					{
+						L0 = L0 + 1000
+					}
+				}
+				if &RMP1StbyPos = 2
+				{
+					L0 = DIV &Adf1Stby 10
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L0 = L0 * 10
+					L1 = MOD &Adf1Stby 10
+					L0 = L0 + L1
+					L1 = DIV &Adf1Stby 100
+					L1 = L1 * 100
+					L0 = L0 + L1
+					
+					if &Adf1Stby = 17500
+					{
+						L0 = L0 - 100
+					}
+				}
+				if &RMP1StbyPos = 3
+				{
+					L0 = MOD &Adf1Stby 10
+					L0 = ROTATE 0 9 &RMP1Knob_sb
+			
+					L1 = DIV &Adf1Stby 10
+					L1 = L1 * 10
+					L0 = L0 + L1
+					
+					if &Adf1Stby = 17500
+					{
+						L0 = L0 - 10
+					}
+				}
+				L0 = LIMIT 1900 17500 0
+			}
+		}
+		&Adf1Stby = L0
+	}
+}
+
+
+//***** RMP 2 *****//
+
+Var 2097, name RMP2Mode // 0: Off, 1: VHF1, 2: VHF2, 3: VHF3, 4: HF1, 5: HF2, 6: VOR, 7: ILS, 8: MLS, 9: ADF
+{
+	CALL &RMPSEL_sb
+	CALL &RMP2UpdActv_sb
+	CALL &RMP2UpdStby_sb
+	&RMP2StbyPos = 0
+
+	C0 = &RMP2Mode = 4
+	C1 = &RMP2Mode = 5
+	C2 = C0 OR C1
+	C0 = &RMP2Mode = 0
+	C1 = C0 OR C2
+	C0 = &RMP2Mode = 8
+	if C0 OR C1
+	{
+		&RMP2dp2_ld = 0
+		&RMP2dp3_ld = 0
+	}
+	else
+	{
+		if &RMP2Mode = 9
+		{
+			&RMP2dp2_ld = 1
+			&RMP2dp3_ld = 0
+		}
+		else
+		{
+			&RMP2dp2_ld = 0
+			&RMP2dp3_ld = 1
+		}
+	}
+}
+
+Var 2098, name RMP2Pwr
+{
+	if &RMP2Pwr = 1
+	{
+		CALL &RMP2VHF2Sw_sb
+	}
+	else
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2NavStby = 0
+		&RMP2Mode = 0  // Off
+	}
+}
+Var 2099, name RMP2Pwr_sb, Link SUBRUTINE
+{
+	C0 = &RMP2Pwr_sw = 1
+	C1 = &MainPwr = 1
+	if C0 AND C1
+	{
+		&RMP2Pwr = 1
+	}
+	else
+	{
+		&RMP2Pwr = 0
+	}
+}
+Var 2100, name RMP2Pwr_sw, Link IOCARD_SW, Device 0, Input 32
+{
+	CALL &RMP2Pwr_sb
+}
+
+Var 2101, name RMP2SEL_ld, Link IOCARD_OUT, Device 0, Output 39
+
+Var 2102, name RMP2VHF1_ld, Link IOCARD_OUT, Device 0, Output 33
+Var 2103, name RMP2VHF1_sw, Link IOCARD_SW, Device 0, Input 22, Type P
+{
+	if &RMP2Pwr = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2VHF1_ld = 1
+		&RMP2Mode = 1  // VHF1
+	}
+}
+
+Var 2104, name RMP2VHF2_ld, Link IOCARD_OUT, Device 0, Output 36
+Var 2105, name RMP2VHF2_sw, Link IOCARD_SW, Device 0, Input 34, Type P
+{
+	CALL &RMP2VHF2Sw_sb
+}
+Var 2106, name RMP2VHF2Sw_sb, Link SUBRUTINE
+{
+	if &RMP2Pwr = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2VHF2_ld = 1
+		&RMP2Mode = 2  // VHF2
+	}
+}
+
+Var 2107, name RMP2VHF3_ld, Link IOCARD_OUT, Device 0, Output 35
+Var 2108, name RMP2VHF3_sw, Link IOCARD_SW, Device 0, Input 33, Type P
+{
+	if &RMP2Pwr = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2VHF3_ld = 1
+		&RMP2Mode = 3  // VHF3
+	}
+}
+
+Var 2109, name RMP2HF1_ld, Link IOCARD_OUT, Device 0, Output 31
+Var 2110, name RMP2HF1_sw, Link IOCARD_SW, Device 0, Input 26, Type P
+{
+	if &RMP2Pwr = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2HF1_ld = 1
+		&RMP2AM_ld = &HF1AM
+		&RMP2Mode = 4  // HF1
+	}
+}
+
+Var 2111, name RMP2HF2_ld, Link IOCARD_OUT, Device 0, Output 34
+Var 2112, name RMP2HF2_sw, Link IOCARD_SW, Device 0, Input 30, Type P
+{
+	if &RMP2Pwr = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2HF2_ld = 1
+		&RMP2AM_ld = &HF2AM
+		&RMP2Mode = 5  // HF2
+	}
+}
+
+Var 2113, name RMP2AM_ld, Link IOCARD_OUT, Device 0, Output 32
+Var 2114, name RMP2AM_sw, Link IOCARD_SW, Device 0, Input 29, Type P
+{
+	if &RMP2Pwr = 1
+	{
+		if &RMP2Mode = 4  // HF1
+		{
+			&HF1AM = 1 - &HF1AM
+		}
+		if &RMP2Mode = 5  // HF2
+		{
+			&HF2AM = 1 - &HF2AM
+		}
+	}
+}
+
+Var 2115, name RMP2NavStby // 0: Off, 1: On
+{
+	&RMP2NAV_ld = &RMP2NavStby
+	if &RMP2NavStby = 0
+	{
+		if &RMP2Mode >= 6
+		{
+			CALL &RMP2VHF2Sw_sb
+		}
+	}
+}
+Var 2116, name RMP2NAV_ld, Link IOCARD_OUT, Device 0, Output 29
+Var 2117, name RMP2NAV_sw, Link IOCARD_SW, Device 0, Input 18, Type P
+{
+	if &RMP2Pwr = 1
+	{
+		&RMP2NavStby = 1 - &RMP2NavStby
+	}
+}
+
+Var 2118, name PrevNav2Freq // In FS format
+Var 2119, name Nav2Freq_fs, Link FSUIPC_INOUT, Offset $0352, Length 2
+{
+	CALL &Nav2Freq_sb
+}
+Var 2120, name Nav2Freq_sb, Link SUBRUTINE
+{
+	L0 = FROMBCD &Nav2Freq_fs
+	L0 = L0 + 10000
+	
+	C0 = L0 <> &Nav2Freq
+	C1 = &Nav2Freq_fs <> &PrevNav2Freq
+	if C0 AND C1
+	{
+		&PrevNav2Freq = &Nav2Freq_fs
+		&Nav2Freq = L0
+		if &Nav2Stby = 0
+		{
+			&Nav2Stby = &Nav2Freq
+		}
+	}
+	else
+	{
+		if &PrevNav2Freq = &Nav2Freq_fs
+		{
+			&PrevNav2Freq = 0
+		}
+		else
+		{
+			if &PrevNav2Freq = 0
+			{
+				&PrevNav2Freq = &Nav2Freq_fs
+			}
+		}
+	}
+}
+Var 2121, name Nav2Freq // In MHz / 100 (i.e. 11375 for 113.75 MHz)
+{
+	C0 = &RMP2Mode = 6  // VOR
+	C1 = &RMP2Mode = 7  // ILS
+	if C0 OR C1
+	{
+		CALL &RMP2UpdActv_sb
+	}
+	
+	L0 = &Nav2Freq - 10000
+	&Nav2Freq_fs = TOBCD L0
+}
+Var 2122, name Nav2Stby // In MHz / 100 (i.e. 11375 for 113.75 MHz)
+{
+	C0 = &RMP2Mode = 6  // VOR
+	C1 = &RMP2Mode = 7  // ILS
+	if C0 OR C1
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+Var 2123, name Nav2Obs_fs, Link FSUIPC_INOUT, Offset $0C5E, Length 2
+Var 2124, name Nav2Obs
+{
+	C0 = &RMP2Mode = 6  // VOR
+	C1 = &RMP2Mode = 7  // ILS
+	if C0 OR C1
+	{
+		CALL &RMP2UpdStby_sb
+	}
+	&Nav2Obs_fs = &Nav2Obs
+}
+Var 2125, name Nav2StbyMode // 0: Stby Freq, 1: Course
+{
+	if &RMP2NavStby = 1
+	{
+		L0 = &Nav2Freq
+		if &Nav2StbyMode = 1
+		{
+			&Nav2Freq = &Nav2Stby
+			&Nav2Obs = &Nav2Obs_fs
+		}
+		&Nav2Stby = L0
+	}
+	CALL &RMP2UpdStby_sb
+}
+
+Var 2126, name RMP2VOR_ld, Link IOCARD_OUT, Device 0, Output 30
+Var 2127, name RMP2VOR_sw, Link IOCARD_SW, Device 0, Input 19, Type P
+{
+	if &RMP2NavStby = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2VOR_ld = 1
+		&Nav2StbyMode = 0
+		&RMP2Mode = 6  // VOR
+	}
+}
+
+Var 2128, name RMP2ILS_ld, Link IOCARD_OUT, Device 0, Output 27
+Var 2129, name RMP2ILS_sw, Link IOCARD_SW, Device 0, Input 20, Type P
+{
+	if &RMP2NavStby = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2ILS_ld = 1
+		&Nav2StbyMode = 0
+		&RMP2Mode = 7  // ILS
+	}
+}
+
+Var 2130, name MLS2Freq, Value 500 // Channel number
+{
+	if &RMP2Mode = 8  // MLS
+	{
+		CALL &RMP2UpdActv_sb
+	}
+}
+Var 2131, name MLS2Stby, Value 500 // Channel number
+{
+	if &RMP2Mode = 8  // MLS
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+Var 2132, name RMP2MLS_ld, Link IOCARD_OUT, Device 0, Output 28
+Var 2133, name RMP2MLS_sw, Link IOCARD_SW, Device 0, Input 21, Type P
+{
+	if &RMP2NavStby = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2MLS_ld = 1
+		&RMP2Mode = 8  // MLS
+	}
+}
+
+Var 2134, name Adf2FreqA_fs, Link FSUIPC_INOUT, Offset $02D4, Length 2
+{
+	if &RMP2Mode = 9  // ADF
+	{
+		CALL &RMP2UpdActv_sb
+	}
+}
+Var 2135, name Adf2FreqB_fs, Link FSUIPC_INOUT, Offset $02D6, Length 2
+{
+	if &RMP2Mode = 9  // ADF
+	{
+		CALL &RMP2UpdActv_sb
+	}
+}
+Var 2136, name Adf2Stby, Value 1900 // In kHz * 10 (i.e.: 3930 for 393.0 kHz)
+{
+	if &RMP2Mode = 9  // ADF
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+
+Var 2137, name RMP2ADF_ld, Link IOCARD_OUT, Device 0, Output 25
+Var 2138, name RMP2ADF_sw, Link IOCARD_SW, Device 0, Input 25, Type P
+{
+	if &RMP2NavStby = 1
+	{
+		CALL &RMP2LedOff_sb
+		&RMP2ADF_ld = 1
+		&RMP2BFO_ld = &Adf2BFO
+		&RMP2Mode = 9  // ADF
+	}
+}
+
+Var 2139, name Adf2BFO // 0: Off, 1: On
+{
+	if &RMP2Mode = 9  // ADF
+	{
+		&RMP2BFO_ld = &Adf2BFO
+	}
+}
+Var 2140, name RMP2BFO_ld, Link IOCARD_OUT, Device 0, Output 26
+Var 2141, name RMP2BFO_sw, Link IOCARD_SW, Device 0, Input 24, Type P
+{
+	if &RMP2Mode = 9  // ADF
+	{
+		&Adf2BFO = 1 - &Adf2BFO
+	}
+}
+
+Var 2142, name RMP2LedOff_sb, Link SUBRUTINE // Shut off all leds, except SEL and NAV
+{
+	&RMP2VHF1_ld = 0
+	&RMP2VHF2_ld = 0
+	&RMP2VHF3_ld = 0
+	&RMP2HF1_ld = 0
+	&RMP2HF2_ld = 0
+	&RMP2AM_ld = 0
+	&RMP2VOR_ld = 0
+	&RMP2ILS_ld = 0
+	&RMP2MLS_ld = 0
+	&RMP2ADF_ld = 0
+	&RMP2BFO_ld = 0
+}
+
+Var 2143, name RMP2dp2_ld, Link IOCARD_OUT, Device 0, Output 37
+Var 2144, name RMP2dp3_ld, Link IOCARD_OUT, Device 0, Output 38
+
+Var 2145, name RMP2ActvD0_dis, Link IOCARD_DISPLAY, Device 0, Digit 6, Numbers 1
+Var 2146, name RMP2ActvD1_dis, Link IOCARD_DISPLAY, Device 0, Digit 7, Numbers 1
+Var 2147, name RMP2ActvD2_dis, Link IOCARD_DISPLAY, Device 0, Digit 8, Numbers 1
+Var 2148, name RMP2ActvD3_dis, Link IOCARD_DISPLAY, Device 0, Digit 9, Numbers 1
+Var 2149, name RMP2ActvD4_dis, Link IOCARD_DISPLAY, Device 0, Digit 10, Numbers 1
+Var 2150, name RMP2ActvD5_dis, Link IOCARD_DISPLAY, Device 0, Digit 11, Numbers 1
+
+Var 2151, name RMP2StbyD0_dis, Link IOCARD_DISPLAY, Device 0, Digit 0, Numbers 1
+Var 2152, name RMP2StbyD1_dis, Link IOCARD_DISPLAY, Device 0, Digit 1, Numbers 1
+Var 2153, name RMP2StbyD2_dis, Link IOCARD_DISPLAY, Device 0, Digit 2, Numbers 1
+Var 2154, name RMP2StbyD3_dis, Link IOCARD_DISPLAY, Device 0, Digit 3, Numbers 1
+Var 2155, name RMP2StbyD4_dis, Link IOCARD_DISPLAY, Device 0, Digit 4, Numbers 1
+Var 2156, name RMP2StbyD5_dis, Link IOCARD_DISPLAY, Device 0, Digit 5, Numbers 1
+
+Var 2157, name RMP2ActvVHF_sb, Link SUBRUTINE
+{
+	if &RMP2ActvVHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2ActvD5_dis = &RMP2ActvVHF_sb
+		&RMP2ActvD4_dis = &RMP2ActvVHF_sb
+		&RMP2ActvD3_dis = &RMP2ActvVHF_sb
+		&RMP2ActvD2_dis = &RMP2ActvVHF_sb
+		&RMP2ActvD1_dis = &RMP2ActvVHF_sb
+		&RMP2ActvD0_dis = &RMP2ActvVHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2ActvVHF_sb 100000
+		L0 = MOD L0 10
+		&RMP2ActvD5_dis = L0
+	
+		L0 = DIV &RMP2ActvVHF_sb 10000
+		L0 = MOD L0 10
+		&RMP2ActvD4_dis = L0
+	
+		L0 = DIV &RMP2ActvVHF_sb 1000
+		L0 = MOD L0 10
+		&RMP2ActvD3_dis = L0
+	
+		L0 = DIV &RMP2ActvVHF_sb 100
+		L0 = MOD L0 10
+		&RMP2ActvD2_dis = L0
+	
+		L0 = DIV &RMP2ActvVHF_sb 10
+		L0 = MOD L0 10
+		&RMP2ActvD1_dis = L0
+	
+		L0 = MOD &RMP2ActvVHF_sb 10
+		&RMP2ActvD0_dis = L0
+	}
+}
+Var 2158, name RMP2ActvHF_sb, Link SUBRUTINE
+{
+	&RMP2ActvD5_dis = &DISPLAY_OFF
+	
+	if &RMP2ActvHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2ActvD4_dis = &RMP2ActvHF_sb
+		&RMP2ActvD3_dis = &RMP2ActvHF_sb
+		&RMP2ActvD2_dis = &RMP2ActvHF_sb
+		&RMP2ActvD1_dis = &RMP2ActvHF_sb
+		&RMP2ActvD0_dis = &RMP2ActvHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2ActvHF_sb 10000
+		L0 = MOD L0 10
+		&RMP2ActvD4_dis = L0
+	
+		L0 = DIV &RMP2ActvHF_sb 1000
+		L0 = MOD L0 10
+		&RMP2ActvD3_dis = L0
+	
+		L0 = DIV &RMP2ActvHF_sb 100
+		L0 = MOD L0 10
+		&RMP2ActvD2_dis = L0
+	
+		L0 = DIV &RMP2ActvHF_sb 10
+		L0 = MOD L0 10
+		&RMP2ActvD1_dis = L0
+	
+		L0 = MOD &RMP2ActvHF_sb 10
+		&RMP2ActvD0_dis = L0
+	}
+}
+Var 2159, name RMP2ActvMF_sb, Link SUBRUTINE
+{
+	&RMP2ActvD0_dis = &DISPLAY_OFF
+	
+	if &RMP2ActvMF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2ActvD5_dis = &RMP2ActvMF_sb
+		&RMP2ActvD4_dis = &RMP2ActvMF_sb
+		&RMP2ActvD3_dis = &RMP2ActvMF_sb
+		&RMP2ActvD2_dis = &RMP2ActvMF_sb
+		&RMP2ActvD1_dis = &RMP2ActvMF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2ActvMF_sb 10000
+		L0 = MOD L0 10
+		&RMP2ActvD5_dis = L0
+	
+		L0 = DIV &RMP2ActvMF_sb 1000
+		L0 = MOD L0 10
+		&RMP2ActvD4_dis = L0
+	
+		L0 = DIV &RMP2ActvMF_sb 100
+		L0 = MOD L0 10
+		&RMP2ActvD3_dis = L0
+	
+		L0 = DIV &RMP2ActvMF_sb 10
+		L0 = MOD L0 10
+		&RMP2ActvD2_dis = L0
+	
+		L0 = MOD &RMP2ActvMF_sb 10
+		&RMP2ActvD1_dis = L0
+	}
+}
+Var 2160, name RMP2ActvMLS_sb, Link SUBRUTINE
+{
+	&RMP2ActvD5_dis = &DISPLAY_OFF
+	&RMP2ActvD3_dis = &DISPLAY_OFF
+	&RMP2ActvD4_dis = &DISPLAY_OFF
+	
+	if &RMP2ActvMLS_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2ActvD2_dis = &RMP2ActvMLS_sb
+		&RMP2ActvD1_dis = &RMP2ActvMLS_sb
+		&RMP2ActvD0_dis = &RMP2ActvMLS_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2ActvMLS_sb 100
+		L0 = MOD L0 10
+		&RMP2ActvD2_dis = L0
+	
+		L0 = DIV &RMP2ActvMLS_sb 10
+		L0 = MOD L0 10
+		&RMP2ActvD1_dis = L0
+	
+		L0 = MOD &RMP2ActvMLS_sb 10
+		&RMP2ActvD0_dis = L0
+	}
+}
+
+Var 2161, name RMP2StbyVHF_sb, Link SUBRUTINE
+{
+	if &RMP2StbyVHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2StbyD5_dis = &RMP2StbyVHF_sb
+		&RMP2StbyD4_dis = &RMP2StbyVHF_sb
+		&RMP2StbyD3_dis = &RMP2StbyVHF_sb
+		&RMP2StbyD2_dis = &RMP2StbyVHF_sb
+		&RMP2StbyD1_dis = &RMP2StbyVHF_sb
+		&RMP2StbyD0_dis = &RMP2StbyVHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2StbyVHF_sb 100000
+		L0 = MOD L0 10
+		&RMP2StbyD5_dis = L0
+	
+		L0 = DIV &RMP2StbyVHF_sb 10000
+		L0 = MOD L0 10
+		&RMP2StbyD4_dis = L0
+	
+		L0 = DIV &RMP2StbyVHF_sb 1000
+		L0 = MOD L0 10
+		&RMP2StbyD3_dis = L0
+	
+		L0 = DIV &RMP2StbyVHF_sb 100
+		L0 = MOD L0 10
+		&RMP2StbyD2_dis = L0
+	
+		L0 = DIV &RMP2StbyVHF_sb 10
+		L0 = MOD L0 10
+		&RMP2StbyD1_dis = L0
+	
+		L0 = MOD &RMP2StbyVHF_sb 10
+		&RMP2StbyD0_dis = L0
+	}
+}
+Var 2162, name RMP2StbyHF_sb, Link SUBRUTINE
+{
+	&RMP2StbyD5_dis = &DISPLAY_OFF
+	
+	if &RMP2StbyHF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2StbyD4_dis = &RMP2StbyHF_sb
+		&RMP2StbyD3_dis = &RMP2StbyHF_sb
+		&RMP2StbyD2_dis = &RMP2StbyHF_sb
+		&RMP2StbyD1_dis = &RMP2StbyHF_sb
+		&RMP2StbyD0_dis = &RMP2StbyHF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2StbyHF_sb 10000
+		L0 = MOD L0 10
+		&RMP2StbyD4_dis = L0
+	
+		L0 = DIV &RMP2StbyHF_sb 1000
+		L0 = MOD L0 10
+		&RMP2StbyD3_dis = L0
+	
+		L0 = DIV &RMP2StbyHF_sb 100
+		L0 = MOD L0 10
+		&RMP2StbyD2_dis = L0
+	
+		L0 = DIV &RMP2StbyHF_sb 10
+		L0 = MOD L0 10
+		&RMP2StbyD1_dis = L0
+	
+		L0 = MOD &RMP2StbyHF_sb 10
+		&RMP2StbyD0_dis = L0
+	}
+}
+Var 2163, name RMP2StbyMF_sb, Link SUBRUTINE
+{
+	&RMP2StbyD0_dis = &DISPLAY_OFF
+	
+	if &RMP2StbyMF_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2StbyD5_dis = &RMP2StbyMF_sb
+		&RMP2StbyD4_dis = &RMP2StbyMF_sb
+		&RMP2StbyD3_dis = &RMP2StbyMF_sb
+		&RMP2StbyD2_dis = &RMP2StbyMF_sb
+		&RMP2StbyD1_dis = &RMP2StbyMF_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2StbyMF_sb 10000
+		L0 = MOD L0 10
+		&RMP2StbyD5_dis = L0
+	
+		L0 = DIV &RMP2StbyMF_sb 1000
+		L0 = MOD L0 10
+		&RMP2StbyD4_dis = L0
+	
+		L0 = DIV &RMP2StbyMF_sb 100
+		L0 = MOD L0 10
+		&RMP2StbyD3_dis = L0
+	
+		L0 = DIV &RMP2StbyMF_sb 10
+		L0 = MOD L0 10
+		&RMP2StbyD2_dis = L0
+	
+		L0 = MOD &RMP2StbyMF_sb 10
+		&RMP2StbyD1_dis = L0
+	}
+}
+Var 2164, name RMP2StbyMLS_sb, Link SUBRUTINE
+{
+	&RMP2StbyD5_dis = &DISPLAY_OFF
+	&RMP2StbyD3_dis = &DISPLAY_OFF
+	&RMP2StbyD4_dis = &DISPLAY_OFF
+	
+	if &RMP2StbyMLS_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2StbyD2_dis = &RMP2StbyMLS_sb
+		&RMP2StbyD1_dis = &RMP2StbyMLS_sb
+		&RMP2StbyD0_dis = &RMP2StbyMLS_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2StbyMLS_sb 100
+		L0 = MOD L0 10
+		&RMP2StbyD2_dis = L0
+	
+		L0 = DIV &RMP2StbyMLS_sb 10
+		L0 = MOD L0 10
+		&RMP2StbyD1_dis = L0
+	
+		L0 = MOD &RMP2StbyMLS_sb 10
+		&RMP2StbyD0_dis = L0
+	}
+}
+Var 2165, name RMP2StbyCrs_sb, Link SUBRUTINE
+{
+	&RMP2StbyD5_dis = &DISPLAY_OFF
+	&RMP2StbyD4_dis = 0
+	&RMP2StbyD3_dis = &DISPLAY_DASH
+	
+	if &RMP2StbyCrs_sb <= &DISPLAY_SETBRT
+	{
+		&RMP2StbyD2_dis = &RMP2StbyCrs_sb
+		&RMP2StbyD1_dis = &RMP2StbyCrs_sb
+		&RMP2StbyD0_dis = &RMP2StbyCrs_sb
+	}
+	else
+	{
+		L0 = DIV &RMP2StbyCrs_sb 100
+		L0 = MOD L0 10
+		&RMP2StbyD2_dis = L0
+	
+		L0 = DIV &RMP2StbyCrs_sb 10
+		L0 = MOD L0 10
+		&RMP2StbyD1_dis = L0
+	
+		L0 = MOD &RMP2StbyCrs_sb 10
+		&RMP2StbyD0_dis = L0
+	}
+}
+
+Var 2166, name RMP2UpdActv_sb, Link SUBRUTINE
+{
+	if &RMP2Mode = 0  // Off
+	{
+		CALL &RMP2ActvVHF_sb &DISPLAY_OFF
+	}
+	if &RMP2Mode = 1  // VHF1
+	{
+		L0 = DIV &VHF1Freq 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP2ActvVHF_sb L0
+	}
+	if &RMP2Mode = 2  // VHF2
+	{
+		L0 = DIV &VHF2Freq 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP2ActvVHF_sb L0
+	}
+	if &RMP2Mode = 3  // VHF3
+	{
+		if &VHF3Mode = 0  // Acars
+		{
+			CALL &RMP2ActvVHF_sb &DISPLAY_DASH
+		}
+		else
+		{
+			L0 = DIV &VHF3Freq 500
+			L0 = L0 * 5
+			L0 = LIMIT 0 999999 0
+			CALL &RMP2ActvVHF_sb L0
+		}
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		L0 = &HF1Freq
+		L0 = LIMIT 0 99999 0
+		CALL &RMP2ActvHF_sb L0
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		L0 = &HF2Freq
+		L0 = LIMIT 0 99999 0
+		CALL &RMP2ActvHF_sb L0
+	}
+	C0 = &RMP2Mode = 6  // VOR
+	C1 = &RMP2Mode = 7  // ILS
+	if C0 OR C1
+	{
+		L0 = &Nav2Freq
+		L0 = LIMIT 0 99999 0
+		CALL &RMP2ActvMF_sb L0
+	}
+	if &RMP2Mode = 8  // MLS
+	{
+		L0 = &MLS2Freq
+		L0 = LIMIT 0 999 0
+		CALL &RMP2ActvMLS_sb L0
+	}
+	if &RMP2Mode = 9  // ADF
+	{
+		L0 = FROMBCD &Adf2FreqA_fs
+		L1 = FROMBCD &Adf2FreqB_fs
+		L2 = DIV L1 100
+		L2 = L2 * 1000
+		L0 = L0 + L2
+		L0 = L0 * 10
+		L2 = MOD L1 10
+		L0 = L0 + L2
+		L0 = LIMIT 0 99999 0
+		CALL &RMP2ActvMF_sb L0
+	}
+}
+
+Var 2167, name RMP2UpdStby_sb, Link SUBRUTINE
+{
+	if &RMP2Mode = 0  // Off
+	{
+		CALL &RMP2StbyVHF_sb &DISPLAY_OFF
+	}
+	if &RMP2Mode = 1  // VHF1
+	{
+		L0 = DIV &VHF1Stby 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP2StbyVHF_sb L0
+	}
+	if &RMP2Mode = 2  // VHF2
+	{
+		L0 = DIV &VHF2Stby 500
+		L0 = L0 * 5
+		L0 = LIMIT 0 999999 0
+		CALL &RMP2StbyVHF_sb L0
+	}
+	if &RMP2Mode = 3  // VHF3
+	{
+		if &VHF3Mode = 0  // Acars active
+		{
+			L0 = DIV &VHF3Freq 500
+			L0 = L0 * 5
+			L0 = LIMIT 0 999999 0
+			CALL &RMP2StbyVHF_sb L0
+		}
+		else
+		{
+			CALL &RMP2StbyVHF_sb &DISPLAY_DASH
+		}
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		L0 = &HF1Stby
+		L0 = LIMIT 0 99999 0
+		CALL &RMP2StbyHF_sb L0
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		L0 = &HF2Stby
+		L0 = LIMIT 0 99999 0
+		CALL &RMP2StbyHF_sb L0
+	}
+	C0 = &RMP2Mode = 6  // VOR
+	C1 = &RMP2Mode = 7  // ILS
+	if C0 OR C1
+	{
+		if &Nav2StbyMode = 0
+		{
+			L0 = &Nav2Stby
+			L0 = LIMIT 0 99999 0
+			CALL &RMP2StbyMF_sb L0
+		}
+		else
+		{
+			L0 = &Nav2Obs
+			L0 = LIMIT 0 999 0
+			CALL &RMP2StbyCrs_sb L0
+		}
+	}
+	if &RMP2Mode = 8  // MLS
+	{
+		L0 = &MLS2Stby
+		L0 = LIMIT 0 999 0
+		CALL &RMP2StbyMLS_sb L0
+	}
+	if &RMP2Mode = 9  // ADF
+	{
+		L0 = &Adf2Stby
+		L0 = LIMIT 0 99999 0
+		CALL &RMP2StbyMF_sb L0
+	}
+}
+
+Var 2168, name RMP2Trsf_sw, Link IOCARD_SW, Device 0, Input 28, Type P
+{
+	if &RMP2Mode = 1  // VHF1
+	{
+		L0 = &VHF1Freq
+		&VHF1Freq = &VHF1Stby
+		&VHF1Stby = L0
+	}
+	if &RMP2Mode = 2  // VHF2
+	{
+		L0 = &VHF2Freq
+		&VHF2Freq = &VHF2Stby
+		&VHF2Stby = L0
+	}
+	if &RMP2Mode = 3  // VHF3
+	{
+		&VHF3Mode = 1 - &VHF3Mode
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		L0 = &HF1Freq
+		&HF1Freq = &HF1Stby
+		&HF1Stby = L0
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		L0 = &HF2Freq
+		&HF2Freq = &HF2Stby
+		&HF2Stby = L0
+	}
+	C0 = &RMP2Mode = 6  // VOR
+	C1 = &RMP2Mode = 7  // ILS
+	if C0 OR C1
+	{
+		&Nav2StbyMode = 1 - &Nav2StbyMode
+	}
+	if &RMP2Mode = 8  // MLS
+	{
+		L0 = &MLS2Freq
+		&MLS2Freq = &MLS2Stby
+		&MLS2Stby = L0
+	}	
+	if &RMP2Mode = 9  // ADF
+	{
+		L0 = FROMBCD &Adf2FreqA_fs
+		L1 = FROMBCD &Adf2FreqB_fs
+		L2 = DIV L1 100
+		L2 = L2 * 1000
+		L0 = L0 + L2
+		L0 = L0 * 10
+		L2 = MOD L1 10
+		L0 = L0 + L2
+
+		L1 = DIV &Adf2Stby 10
+		L1 = MOD L1 1000
+		&Adf2FreqA_fs = TOBCD L1
+		L1 = DIV &Adf2Stby 10000
+		L1 = L1 * 100
+		L2 = MOD &Adf2Stby 10
+		L1 = L1 + L2
+		&Adf2FreqB_fs = TOBCD L1
+
+		&Adf2Stby = L0
+	}
+}
+
+Var 2169, name RMP2StbyPos // Position of cursor in StandBy display
+Var 2170, name RMP2KnobPsh_sw, Link IOCARD_SW, Device 0, Input 27
+{
+	if &RMP2KnobPsh_sw = 1
+	{
+		C0 = &RMP2Mode >= 1
+		C1 = &RMP2Mode <= 3
+		if C0 AND C1  // VHF1, VHF2, VHF3
+		{
+			C0 = &RMP2Mode < 3  // VHF1, VHF2
+			C1 = &VHF3Mode = 0
+			if C0 OR C1
+			{
+				&RMP2StbyPos = 1 - &RMP2StbyPos
+				if &RMP2StbyPos = 0
+				{
+					&RMP2StbyD3_dis = &DISPLAY_OFF
+					&RMP2StbyD4_dis = &DISPLAY_OFF
+					&RMP2StbyD5_dis = &DISPLAY_OFF
+				}
+				else
+				{
+					&RMP2StbyD0_dis = &DISPLAY_OFF
+					&RMP2StbyD1_dis = &DISPLAY_OFF
+					&RMP2StbyD2_dis = &DISPLAY_OFF
+				}
+			}
+		}
+		C0 = &RMP2Mode = 4  // HF1
+		C1 = &RMP2Mode = 5  // HF2
+		if C0 OR C1
+		{
+			&RMP2StbyPos = ROTATE 0 3 1
+			if &RMP2StbyPos = 0
+			{
+				&RMP2StbyD3_dis = &DISPLAY_OFF
+				&RMP2StbyD4_dis = &DISPLAY_OFF
+			}
+			if &RMP2StbyPos = 1
+			{
+				&RMP2StbyD2_dis = &DISPLAY_OFF
+			}
+			if &RMP2StbyPos = 2
+			{
+				&RMP2StbyD1_dis = &DISPLAY_OFF
+			}
+			if &RMP2StbyPos = 3
+			{
+				&RMP2StbyD0_dis = &DISPLAY_OFF
+			}
+		}
+		C0 = &RMP2Mode = 6  // VOR
+		C1 = &RMP2Mode = 7  // ILS
+		if C0 OR C1
+		{
+			if &Nav2StbyMode = 0
+			{
+				&RMP2StbyPos = 1 - &RMP2StbyPos
+				if &RMP2StbyPos = 0
+				{
+					&RMP2StbyD3_dis = &DISPLAY_OFF
+					&RMP2StbyD4_dis = &DISPLAY_OFF
+					&RMP2StbyD5_dis = &DISPLAY_OFF
+				}
+				else
+				{
+					&RMP2StbyD1_dis = &DISPLAY_OFF
+					&RMP2StbyD2_dis = &DISPLAY_OFF
+				}
+			}
+		}
+		if &RMP2Mode = 9  // ADF
+		{
+			&RMP2StbyPos = ROTATE 0 3 1
+			if &RMP2StbyPos = 0
+			{
+				&RMP2StbyD4_dis = &DISPLAY_OFF
+				&RMP2StbyD5_dis = &DISPLAY_OFF
+			}
+			if &RMP2StbyPos = 1
+			{
+				&RMP2StbyD3_dis = &DISPLAY_OFF
+			}
+			if &RMP2StbyPos = 2
+			{
+				&RMP2StbyD2_dis = &DISPLAY_OFF
+			}
+			if &RMP2StbyPos = 3
+			{
+				&RMP2StbyD1_dis = &DISPLAY_OFF
+			}
+		}
+	}
+	else
+	{
+		CALL &RMP2UpdStby_sb
+	}
+}
+
+Var 2171, name RMP2KnobTimer // Used to accelerate increment/decrement
+{
+	if &RMP2KnobTimer < 0  // Because behavior of TIMER is very oddly
+	{
+		&RMP2KnobTimer = 0
+	}
+}
+Var 2172, name RMP2KnobA_sw, Link IOCARD_SW, Device 0, Input 35
+{
+	if &RMP2Pwr = 1
+	{
+		if &RMP2KnobA_sw = 0
+		{
+			if &RMP2KnobB_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		else
+		{
+			if &RMP2KnobB_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		
+		if &RMP2KnobTimer > 0
+		{
+			L0 = L0 * 4
+		}
+		CALL &RMP2Knob_sb L0
+		&RMP2KnobTimer = &RMP2KnobTimer + 1
+		&RMP2KnobTimer = TIMER &RMP2KnobTimer, -1, 5
+	}
+}
+Var 2173, name RMP2KnobB_sw, Link IOCARD_SW, Device 0, Input 31
+{
+	if &RMP2Pwr = 1
+	{
+		if &RMP2KnobB_sw = 0
+		{
+			if &RMP2KnobA_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		else
+		{
+			if &RMP2KnobA_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		
+		if &RMP2KnobTimer > 0
+		{
+			L0 = L0 * 4
+		}
+		CALL &RMP2Knob_sb L0
+		&RMP2KnobTimer = &RMP2KnobTimer + 1
+		&RMP2KnobTimer = TIMER &RMP2KnobTimer, -1, 5
+	}
+}
+Var 2174, name RMP2Knob_sb, Link SUBRUTINE
+{
+	if &RMP2Mode = 1  // VHF1
+	{
+		if &RMP2StbyPos = 0
+		{
+			L0 = DIV &VHF1Stby 100000
+			L0 = ROTATE 118 136 &RMP2Knob_sb
+			
+			L0 = L0 * 100000
+			L1 = MOD &VHF1Stby 100000
+			&VHF1Stby = L0 + L1
+		}
+		else
+		{
+			L0 = MOD &VHF1Stby 100000
+			L0 = DIV L0 625
+			L0 = ROTATE 0 159 &RMP2Knob_sb
+			L0 = L0 * 625
+			
+			L1 = DIV &VHF1Stby 100000
+			L1 = L1 * 100000
+			&VHF1Stby = L0 + L1
+		}
+	}
+	if &RMP2Mode = 2  // VHF2
+	{
+		if &RMP2StbyPos = 0
+		{
+			L0 = DIV &VHF2Stby 100000
+			L0 = ROTATE 118 136 &RMP2Knob_sb
+			
+			L0 = L0 * 100000
+			L1 = MOD &VHF2Stby 100000
+			&VHF2Stby = L0 + L1
+		}
+		else
+		{
+			L0 = MOD &VHF2Stby 100000
+			L0 = DIV L0 625
+			L0 = ROTATE 0 159 &RMP2Knob_sb
+			L0 = L0 * 625
+			
+			L1 = DIV &VHF2Stby 100000
+			L1 = L1 * 100000
+			&VHF2Stby = L0 + L1
+		}
+	}
+	if &RMP2Mode = 3  // VHF3
+	{
+		if &VHF3Mode = 0
+		{
+			if &RMP2StbyPos = 0
+			{
+				L0 = DIV &VHF3Freq 100000
+				L0 = ROTATE 118 136 &RMP2Knob_sb
+				
+				L0 = L0 * 100000
+				L1 = MOD &VHF3Freq 100000
+				&VHF3Freq = L0 + L1
+			}
+			else
+			{
+				L0 = MOD &VHF3Freq 100000
+				L0 = DIV L0 625
+				L0 = ROTATE 0 159 &RMP2Knob_sb
+				L0 = L0 * 625
+				
+				L1 = DIV &VHF3Freq 100000
+				L1 = L1 * 100000
+				&VHF3Freq = L0 + L1
+			}
+		}
+	}
+	if &RMP2Mode = 4  // HF1
+	{
+		C0 = &HF1Stby = 2800
+		C1 = &RMP2Knob_sb < 0
+		if C0 AND C1
+		{
+			L0 = 24000
+		}
+		else
+		{
+			C0 = &HF1Stby = 24000
+			C1 = &RMP2Knob_sb > 0
+			if C0 AND C1
+			{
+				L0 = 2800
+			}
+			else
+			{
+				if &RMP2StbyPos = 0
+				{
+					L0 = DIV &HF1Stby 1000
+					L0 = ROTATE 2 24 &RMP2Knob_sb
+			
+					L0 = L0 * 1000
+					L1 = MOD &HF1Stby 1000
+					L0 = L0 + L1
+				}
+				if &RMP2StbyPos = 1
+				{
+					L0 = DIV &HF1Stby 100
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L0 = L0 * 100
+					L1 = MOD &HF1Stby 100
+					L0 = L0 + L1
+					L1 = DIV &HF1Stby 1000
+					L1 = L1 * 1000
+					L0 = L0 + L1
+					
+					if &HF1Stby = 24000
+					{
+						L0 = L0 - 1000
+					}
+				}
+				if &RMP2StbyPos = 2
+				{
+					L0 = DIV &HF1Stby 10
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L0 = L0 * 10
+					L1 = MOD &HF1Stby 10
+					L0 = L0 + L1
+					L1 = DIV &HF1Stby 100
+					L1 = L1 * 100
+					L0 = L0 + L1
+					
+					if &HF1Stby = 24000
+					{
+						L0 = L0 - 100
+					}
+				}
+				if &RMP2StbyPos = 3
+				{
+					L0 = MOD &HF1Stby 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L1 = DIV &HF1Stby 10
+					L1 = L1 * 10
+					L0 = L0 + L1
+					
+					if &HF1Stby = 24000
+					{
+						L0 = L0 - 10
+					}
+				}
+				L0 = LIMIT 2800 24000 0
+			}
+		}
+		&HF1Stby = L0
+	}
+	if &RMP2Mode = 5  // HF2
+	{
+		C0 = &HF2Stby = 2800
+		C1 = &RMP2Knob_sb < 0
+		if C0 AND C1
+		{
+			L0 = 24000
+		}
+		else
+		{
+			C0 = &HF2Stby = 24000
+			C1 = &RMP2Knob_sb > 0
+			if C0 AND C1
+			{
+				L0 = 2800
+			}
+			else
+			{
+				if &RMP2StbyPos = 0
+				{
+					L0 = DIV &HF2Stby 1000
+					L0 = ROTATE 2 24 &RMP2Knob_sb
+			
+					L0 = L0 * 1000
+					L1 = MOD &HF2Stby 1000
+					L0 = L0 + L1
+				}
+				if &RMP2StbyPos = 1
+				{
+					L0 = DIV &HF2Stby 100
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L0 = L0 * 100
+					L1 = MOD &HF2Stby 100
+					L0 = L0 + L1
+					L1 = DIV &HF2Stby 1000
+					L1 = L1 * 1000
+					L0 = L0 + L1
+					
+					if &HF2Stby = 24000
+					{
+						L0 = L0 - 1000
+					}
+				}
+				if &RMP2StbyPos = 2
+				{
+					L0 = DIV &HF2Stby 10
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L0 = L0 * 10
+					L1 = MOD &HF2Stby 10
+					L0 = L0 + L1
+					L1 = DIV &HF2Stby 100
+					L1 = L1 * 100
+					L0 = L0 + L1
+					
+					if &HF2Stby = 24000
+					{
+						L0 = L0 - 100
+					}
+				}
+				if &RMP2StbyPos = 3
+				{
+					L0 = MOD &HF2Stby 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L1 = DIV &HF2Stby 10
+					L1 = L1 * 10
+					L0 = L0 + L1
+					
+					if &HF2Stby = 24000
+					{
+						L0 = L0 - 10
+					}
+				}
+				L0 = LIMIT 2800 24000 0
+			}
+		}
+		&HF2Stby = L0
+	}
+	C0 = &RMP2Mode = 6  // VOR
+	C1 = &RMP2Mode = 7  // ILS
+	if C0 OR C1
+	{
+		if &Nav2StbyMode = 0
+		{
+			if &RMP2StbyPos = 0
+			{
+				L0 = DIV &Nav2Stby 100
+				L0 = ROTATE 108 117 &RMP2Knob_sb
+			
+				L0 = L0 * 100
+				L1 = MOD &Nav2Stby 100
+				&Nav2Stby = L0 + L1
+			}
+			else
+			{
+				L0 = MOD &Nav2Stby 100
+				L0 = DIV L0 5
+				L0 = ROTATE 0 19 &RMP2Knob_sb
+				L0 = L0 * 5
+			
+				L1 = DIV &Nav2Stby 100
+				L1 = L1 * 100
+				&Nav2Stby = L0 + L1
+			}
+		}
+		else
+		{
+			&Nav2Obs = ROTATE 0 359 &RMP2Knob_sb
+		}
+	}
+	if &RMP2Mode = 8  // MLS
+	{
+		&MLS2Stby = ROTATE 500 699 &RMP2Knob_sb
+	}
+	if &RMP2Mode = 9  // ADF
+	{
+		C0 = &Adf2Stby = 1900
+		C1 = &RMP2Knob_sb < 0
+		if C0 AND C1
+		{
+			L0 = 17500
+		}
+		else
+		{
+			C0 = &Adf2Stby = 17500
+			C1 = &RMP2Knob_sb > 0
+			if C0 AND C1
+			{
+				L0 = 1900
+			}
+			else
+			{
+				if &RMP2StbyPos = 0
+				{
+					L0 = DIV &Adf2Stby 1000
+					L0 = ROTATE 1 17 &RMP2Knob_sb
+			
+					L0 = L0 * 1000
+					L1 = MOD &Adf2Stby 1000
+					L0 = L0 + L1
+				}
+				if &RMP2StbyPos = 1
+				{
+					L0 = DIV &Adf2Stby 100
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L0 = L0 * 100
+					L1 = MOD &Adf2Stby 100
+					L0 = L0 + L1
+					L1 = DIV &Adf2Stby 1000
+					L1 = L1 * 1000
+					L0 = L0 + L1
+					
+					if &Adf2Stby = 1900
+					{
+						L0 = L0 + 1000
+					}
+				}
+				if &RMP2StbyPos = 2
+				{
+					L0 = DIV &Adf2Stby 10
+					L0 = MOD L0 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L0 = L0 * 10
+					L1 = MOD &Adf2Stby 10
+					L0 = L0 + L1
+					L1 = DIV &Adf2Stby 100
+					L1 = L1 * 100
+					L0 = L0 + L1
+					
+					if &Adf2Stby = 17500
+					{
+						L0 = L0 - 100
+					}
+				}
+				if &RMP2StbyPos = 3
+				{
+					L0 = MOD &Adf2Stby 10
+					L0 = ROTATE 0 9 &RMP2Knob_sb
+			
+					L1 = DIV &Adf2Stby 10
+					L1 = L1 * 10
+					L0 = L0 + L1
+					
+					if &Adf2Stby = 17500
+					{
+						L0 = L0 - 10
+					}
+				}
+				L0 = LIMIT 1900 17500 0
+			}
+		}
+		&Adf2Stby = L0
+	}
+}

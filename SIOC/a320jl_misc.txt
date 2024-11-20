@@ -1,0 +1,173 @@
+//*****************************************************************************
+// SIOC A320 MISCELLANEOUS
+// Aquitaine Simulation
+//*****************************************************************************
+// Fichier:                    a320jl_misc.txt
+// Date de création:           07/01/2022
+
+// Règles de nommage des variables:
+//	Variables FS:           _fs
+//	Interrupteurs:          _sw
+//	Rotacteurs:             _rot
+//	Voyants à LED:          _ld
+//	Afficheurs 7 segments:  _dis
+//	Routines:               _sb
+
+// Classification des variables:
+// voir a320jl_init.txt
+
+// Journal des modifications:
+// 04/02/2022: Ajout du Rudder Trim
+
+
+//***** PUSHBACK *****//
+
+var 3000, name Pushback_fs, Link FSUIPC_INOUT, Offset $31F4, Length 4
+Var 3001, name PbUp_sw, Link IOCARD_SW, Device 0, Input 141, Type P
+{
+	&Pushback_fs = 3
+}
+Var 3002, name PbDown_sw, Link IOCARD_SW, Device 0, Input 142, Type P
+{
+	&Pushback_fs = 0
+}
+Var 3003, name PbLeft_sw, Link IOCARD_SW, Device 0, Input 140, Type P
+{
+	&Pushback_fs = 1
+}
+Var 3004, name PbRight_sw, Link IOCARD_SW, Device 0, Input 135, Type P
+{
+	&Pushback_fs = 2
+}
+
+
+//***** RUDDER TRIM *****//
+
+Var 3005, name RudTrim_dis, Link IOCARD_DISPLAY, Device 0, Digit 76, Numbers 3
+
+Var 3006, name RudTrimL_ld, Link IOCARD_OUT, Device 0, Output 90
+Var 3007, name RudTrimR_ld, Link IOCARD_OUT, Device 0, Output 91
+Var 3008, name RudTrimDP_ld, Link IOCARD_OUT, Device 0, Output 92
+
+Var 3009, name RudTrim_fs, Link FSUIPC_IN, Offset $73B1, Length 2, Type 1
+{
+	CALL &RudTrim_sb
+}
+Var 3010, name RudTrim_sb, Link SUBRUTINE
+{
+	if &RudTrim_fs = 777
+	{
+		&RudTrimDP_ld = 0
+		&RudTrimL_ld = 0
+		&RudTrimR_ld = 0
+		&RudTrim_dis = &DISPLAY_OFF
+	}
+	else
+	{
+		if &RudTrim_fs = 999
+		{
+			&RudTrimDP_ld = 0
+			&RudTrimL_ld = 0
+			&RudTrimR_ld = 0
+			&RudTrim_dis = &DISPLAY_DASH
+		}
+		else
+		{
+			&RudTrimDP_ld = 1
+
+			if &RudTrim_fs < 0
+			{
+				&RudTrimL_ld = 1
+			}
+			else
+			{
+				&RudTrimL_ld = 0
+			}
+
+			if &RudTrim_fs > 0
+			{
+				&RudTrimR_ld = 1
+			}
+			else
+			{
+				&RudTrimR_ld = 0
+			}
+
+			&RudTrim_dis = ABS &RudTrim_fs
+		}
+	}
+}
+
+Var 3011, name RudTrimR_sw, Link IOCARD_SW, Device 0, Input 109
+{
+	if &RudTrimR_sw = 1
+	{
+		&RudTrimOp_sb = 1
+	}
+	else
+	{
+		&RudTrimOp_sb = 0
+	}
+}
+Var 3012, name RudTrimL_sw, Link IOCARD_SW, Device 0, Input 110
+{
+	if &RudTrimL_sw = 1
+	{
+		&RudTrimOp_sb = -1
+	}
+	else
+	{
+		&RudTrimOp_sb = 0
+	}
+}
+Var 3013, name RudTrimOp_sb // -1: décrémente, 0: stop, 1: incrémente
+{
+	if &RudTrimOp_sb < 0
+	{
+		&MiscCtrl_fs = 77
+	}
+	if &RudTrimOp_sb > 0
+	{
+		&MiscCtrl_fs = 78
+	}
+	if &RudTrimOp_sb = 0
+	{
+		&MiscCtrl_fs = 79
+	}
+}
+Var 3014, name RudTrimRST_sw, Link IOCARD_SW, Device 0, Input 112, Type P
+{
+	&MiscCtrl_fs = 80
+}
+
+//***** ENG FIRE *****//
+
+Var 3015, name Eng1Fire_ld, Link IOCARD_OUT, Device 0, Output 41
+Var 3016, name Eng2Fire_ld, Link IOCARD_OUT, Device 0, Output 40
+Var 3017, name Eng1Fault_ld, Link IOCARD_OUT, Device 0, Output 42
+Var 3018, name Eng2Fault_ld, Link IOCARD_OUT, Device 0, Output 43
+Var 3019, name Off73AC_fs, Link FSUIPC_INOUT, Offset $73AC, Length 1
+{
+	CALL &EngFire_sb
+}
+Var 3020, name EngFire_sb, Link SUBRUTINE
+{
+	&Eng1Fire_ld = TESTBIT &Off73AC_fs, 5
+	&Eng2Fire_ld = TESTBIT &Off73AC_fs, 6
+	&Eng1Fault_ld = TESTBIT &Off73AC_fs, 7
+	&Eng2Fault_ld = TESTBIT &Off73AD_fs, 0
+}
+
+//***** WEIGHT & BALANCE *****//
+
+Var 3021, name Adjust_FWD_fs, Link FSUIPC_INOUT, Offset $1550, Length 8, Numbers 0 // Valeur de la station 8(Adjust FWD) en Lbs definie par JL soit 9947
+Var 3022, name Adjust_AFT_fs, Link FSUIPC_INOUT, Offset $1580, Length 8, Numbers 0 // Valeur de la station 8(Adjust AFT) en Lbs definie par JL soit 10053
+{
+	if &Adjust_FWD_fs = 0
+	{
+		&Adjust_FWD_fs = 9947
+		&Adjust_AFT_fs = 10053
+	}
+}
+
+

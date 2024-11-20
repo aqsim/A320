@@ -1,0 +1,106 @@
+//*****************************************************************************
+// SIOC A320 INIT
+// Aquitaine Simulation
+//*****************************************************************************
+// Fichier:                    a320jl_init.txt
+// Date de création:           17/12/2021
+
+// Règles de nommage des variables:
+//	Variables FS:           _fs
+//	Interrupteurs:          _sw
+//	Rotacteurs:             _rot
+//	Voyants à LED:          _ld
+//	Afficheurs 7 segments:  _dis
+//	Routines:               _sb
+
+// Classification des variables:
+//   a320jl_init.txt
+//      Init:                0000
+//      Variables:           1000 à 1499
+//      Constantes:          9000 à 9999
+//   a320jl_rmp.txt
+//      Variables:           2000 à 2499
+//   a320jl_xpdr.txt
+//      Variables:           2500 à 2999
+//   a320jl_misc.txt
+//      Variables:           3000 à 3499
+
+// Journal des modifications:
+// 04/11/2022: Ajout outputs eclairage ; ajout TmpMainPwr
+// 03/02/2023: Logique MainPwr remplacee par offset JeeHell
+
+// Some constants
+Var 9999, name DISPLAY_OFF, Value -999999
+Var 9998, name DISPLAY_DASH, Value -999998
+Var 9997, name DISPLAY_SIX, Value -999997
+Var 9996, name DISPLAY_T, Value -999996
+Var 9995, name DISPLAY_D, Value -999995
+Var 9994, name DISPLAY_SETBRT, Value -999994
+
+// Init
+Var 0000, name Init, Value 0
+{
+	&DoInit = DELAY 1, 200
+}
+Var 1000, name DoInit
+{
+	&EssPwr_ld = &EssPwr
+	&MainPwr_ld = &MainPwr
+
+// RMP
+	CALL &RMP1Pwr_sb
+	CALL &RMP2Pwr_sb
+// ATC/TCAS
+	CALL &ATCCode_sb
+// RUDDER TRIM
+	CALL &RudTrim_sb
+// ENG FIRE
+	CALL &EngFire_sb
+}
+
+Var 1001, name EssPwr // Essential power, provided by any power sources
+{
+	&EssPwr_ld = &EssPwr
+
+// RMP
+	CALL &RMP1Pwr_sb
+}
+Var 1002, name MainPwr // Main power, provided by engines, APU or GPU
+{
+	&MainPwr_ld = &MainPwr
+
+// RMP
+	CALL &RMP2Pwr_sb
+// ATC/TCAS
+	CALL &ATCCode_sb
+	CALL &ATCCodeUpd_sb
+// RUDDER TRIM
+	CALL &RudTrim_sb
+}
+
+var 1003, name MiscCtrl_fs, Link FSUIPC_INOUT, Offset $78ED, Length 1
+
+Var 1004, name SPDDisp_fs, Link FSUIPC_INOUT, Offset $73C1, Length 2, Type 1
+{
+	CALL &Pwr_sb
+}
+Var 1005, name Pwr_sb, Link SUBRUTINE
+{
+	if &SPDDisp_fs = -998
+	{
+		&EssPwr = 0
+		&MainPwr = 0
+	}
+	else
+	{
+		&EssPwr = 1
+		&MainPwr = TESTBIT &Off73AD_fs, 4 // Main ELEC power
+	}
+}
+Var 1006, name Off73AD_fs, Link FSUIPC_INOUT, Offset $73AD, Length 1
+{
+	CALL &Pwr_sb
+	CALL &EngFire_sb
+}
+Var 1007, name MainPwr_ld, Link IOCARD_OUT, Device 0, Output 93 // For integral lights
+Var 1008, name EssPwr_ld, Link IOCARD_OUT, Device 0, Output 94 // For integral lights

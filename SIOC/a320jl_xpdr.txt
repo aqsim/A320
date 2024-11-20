@@ -1,0 +1,327 @@
+//*****************************************************************************
+// SIOC A320 TRANSPONDER
+// Aquitaine Simulation
+//*****************************************************************************
+// Fichier:                    a320jl_xpdr.txt
+// Date de création:           17/12/2021
+
+// Règles de nommage des variables:
+//	Variables FS:           _fs
+//	Interrupteurs:          _sw
+//	Rotacteurs:             _rot
+//	Voyants à LED:          _ld
+//	Afficheurs 7 segments:  _dis
+//	Routines:               _sb
+
+// Classification des variables:
+// voir a320jl_init.txt
+
+// Journal des modifications:
+// aucun
+
+//***** ATC/TCAS *****//
+
+Var 2500, name ACMSPrint_sw, Link IOCARD_SW, Device 0, Input 60, Type P
+{
+// IDG Reconnect
+//	&MiscCtrl_fs = xx
+//	&MiscCtrl_fs = DELAY xx 50
+}
+Var 2501, name DFDREvent_sw, Link IOCARD_SW, Device 0, Input 61, Type P
+{
+	&MiscCtrl_fs = 33  // Connect / Disconnect EXT PWR
+}
+
+Var 2502, name IVAOModeC_fs, Link FSUIPC_INOUT, Offset $7B91, Length 1
+{
+	&Joy72_fs = CHANGEBIT 2, &IVAOModeC_fs
+}
+
+// modif du 3 nov2018  adaptation IVAP en mode externe sur le master
+// l'offset 07b91(1) ne fait pas reagir le btn mode charlie de la fenetre ivap
+// donc on utilise le declanchement d'un key send via joy64 pour envoyer via fsuipc interface un ctrl+ ² à ivap
+// il faudra parametrer dans ivap config.exe cette touche pour le btn mode.
+var 2503, name Joy72_fs, link FSUIPC_INOUT, Offset $3360, Length 4
+
+//Var 2505, name ATCFail_ld, Link IOCARD_OUT, Device 0, Output 44
+
+Var 2504, name ATCCodeD0_dis, Link IOCARD_DISPLAY, Device 0, Digit 12, Numbers 1
+Var 2505, name ATCCodeD1_dis, Link IOCARD_DISPLAY, Device 0, Digit 13, Numbers 1
+Var 2506, name ATCCodeD2_dis, Link IOCARD_DISPLAY, Device 0, Digit 14, Numbers 1
+Var 2507, name ATCCodeD3_dis, Link IOCARD_DISPLAY, Device 0, Digit 15, Numbers 1
+
+Var 2508, name PrevATCCode // In FS format
+Var 2509, name ATCCode_fs, Link FSUIPC_INOUT, Offset $0354, Length 2
+{
+	CALL &ATCCode_sb
+}
+Var 2510, name ATCCode_sb, Link SUBRUTINE
+{
+	L0 = FROMBCD &ATCCode_fs
+
+	C0 = L0 <> &ATCCode
+	C1 = &ATCCode_fs <> &PrevATCCode
+	if C0 AND C1
+	{
+		&PrevATCCode = &ATCCode_fs
+		&ATCCode = L0
+	}
+	else
+	{
+		if &PrevATCCode = &ATCCode_fs
+		{
+			&PrevATCCode = 0
+		}
+		else
+		{
+			if &PrevATCCode = 0
+			{
+				&PrevATCCode = &ATCCode_fs
+			}
+		}
+	}
+
+}
+Var 2511, name ATCCode
+{
+	CALL &ATCCodeUpd_sb
+	&ATCCode_fs = TOBCD &ATCCode
+}
+Var 2512, name ATCCodeUpd_sb, Link SUBRUTINE
+{
+	if &MainPwr = 1
+	{
+		L0 = DIV &ATCCode 1000
+		&ATCCodeD3_dis = MOD L0 10
+	
+		L0 = DIV &ATCCode 100
+		&ATCCodeD2_dis = MOD L0 10
+	
+		L0 = DIV &ATCCode 10
+		&ATCCodeD1_dis = MOD L0 10
+	
+		&ATCCodeD0_dis = MOD &ATCCode 10
+	}
+	else
+	{
+		&ATCCodeD0_dis = &DISPLAY_OFF
+		&ATCCodeD1_dis = &DISPLAY_OFF
+		&ATCCodeD2_dis = &DISPLAY_OFF
+		&ATCCodeD3_dis = &DISPLAY_OFF
+	}
+}
+
+Var 2513, name ATCPosL // Position of cursor for left knob
+Var 2514, name ATCKnobLPsh_sw, Link IOCARD_SW, Device 0, Input 53
+{
+	if &ATCKnobLPsh_sw = 1
+	{
+		&ATCPosL = 1 - &ATCPosL
+		if &ATCPosL = 0
+		{
+			&ATCCodeD3_dis = &DISPLAY_OFF
+		}
+		else
+		{
+			&ATCCodeD2_dis = &DISPLAY_OFF
+		}
+	}
+	else
+	{
+		CALL &ATCCodeUpd_sb
+	}
+}
+Var 2515, name ATCPosR // Position of cursor for right knob
+Var 2516, name ATCKnobRPsh_sw, Link IOCARD_SW, Device 0, Input 47
+{
+	if &ATCKnobRPsh_sw = 1
+	{
+		&ATCPosR = 1 - &ATCPosR
+		if &ATCPosR = 0
+		{
+			&ATCCodeD1_dis = &DISPLAY_OFF
+		}
+		else
+		{
+			&ATCCodeD0_dis = &DISPLAY_OFF
+		}
+	}
+	else
+	{
+		CALL &ATCCodeUpd_sb
+	}
+}
+
+Var 2517, name ATCKnobLA_sw, Link IOCARD_SW, Device 0, Input 45
+{
+	if &MainPwr = 1
+	{
+		if &ATCKnobLA_sw = 0
+		{
+			if &ATCKnobLB_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		else
+		{
+			if &ATCKnobLB_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		
+		CALL &ATCKnobL_sb L0
+	}
+}
+Var 2518, name ATCKnobLB_sw, Link IOCARD_SW, Device 0, Input 50
+{
+	if &MainPwr = 1
+	{
+		if &ATCKnobLB_sw = 0
+		{
+			if &ATCKnobLA_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		else
+		{
+			if &ATCKnobLA_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		
+		CALL &ATCKnobL_sb L0
+	}
+}
+Var 2519, name ATCKnobL_sb, Link SUBRUTINE
+{
+	if &MainPwr = 1
+	{
+		if &ATCPosL = 0
+		{
+			L1 = DIV &ATCCode 1000
+			L1 = ROTATE 0 7 &ATCKnobL_sb
+			L1 = L1 * 1000
+			L2 = MOD &ATCCode 1000
+			&ATCCode = L1 + L2
+		}
+		else
+		{
+			L1 = DIV &ATCCode 100
+			L1 = MOD L1 10
+			L1 = ROTATE 0 7 &ATCKnobL_sb
+			L1 = L1 * 100
+			L2 = MOD &ATCCode 100
+			L1 = L1 + L2
+			L2 = DIV &ATCCode 1000
+			L2 = L2 * 1000
+			&ATCCode = L1 + L2
+		}
+	}
+}
+
+Var 2520, name ATCKnobRA_sw, Link IOCARD_SW, Device 0, Input 49
+{
+	if &MainPwr = 1
+	{
+		if &ATCKnobRA_sw = 0
+		{
+			if &ATCKnobRB_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		else
+		{
+			if &ATCKnobRB_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		
+		CALL &ATCKnobR_sb L0
+	}
+}
+Var 2521, name ATCKnobRB_sw, Link IOCARD_SW, Device 0, Input 46
+{
+	if &MainPwr = 1
+	{
+		if &ATCKnobRB_sw = 0
+		{
+			if &ATCKnobRA_sw = 0
+			{
+				L0 = 1
+			}
+			else
+			{
+				L0 = -1
+			}
+		}
+		else
+		{
+			if &ATCKnobRA_sw = 0
+			{
+				L0 = -1
+			}
+			else
+			{
+				L0 = 1
+			}
+		}
+		
+		CALL &ATCKnobR_sb L0
+	}
+}
+Var 2522, name ATCKnobR_sb, Link SUBRUTINE
+{
+	if &MainPwr = 1
+	{
+		if &ATCPosR = 0
+		{
+			L1 = DIV &ATCCode 10
+			L1 = MOD L1 10
+			L1 = ROTATE 0 7 &ATCKnobR_sb
+			L1 = L1 * 10
+			L2 = MOD &ATCCode 10
+			L1 = L1 + L2
+			L2 = DIV &ATCCode 100
+			L2 = L2 * 100
+			&ATCCode = L1 + L2
+		}
+		else
+		{
+			L1 = MOD &ATCCode 10
+			L1 = ROTATE 0 7 &ATCKnobR_sb
+			L2 = DIV &ATCCode 10
+			L2 = L2 * 10
+			&ATCCode = L1 + L2
+		}
+	}
+}

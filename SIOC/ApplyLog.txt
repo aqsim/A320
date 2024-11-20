@@ -1,0 +1,31 @@
+Starting process
+Compiler path: D:\SIOC\sioc_compiler.Exe
+sioc_compiler.Exe exists
+sioc.ini exists
+FMGSServer.iocp.ini initialized
+JeeHellWare.txt initialized
+MCDU enabled
+MCDU OK
+FO MCDU enabled
+FO MCDU OK
+SWTCHG enabled
+XPDR enabled
+XPDR OK
+ACP not enabled
+RMP not enabled
+FCU not enabled
+EFIS not enabled
+Low OVHD enabled
+low OVHD OK
+Upper OVHD enabled
+Upper OVHD OK
+MISC enabled
+MISC OK
+ 
+D:\A320FMGS\Hardware Modules\a320jl_init.txt
+D:\A320FMGS\Hardware Modules\a320jl_rmp.txt
+D:\A320FMGS\Hardware Modules\a320jl_xpdr.txt
+D:\A320FMGS\Hardware Modules\a320jl_misc.txt
+Finished writing
+compiling...
+compiling OK
